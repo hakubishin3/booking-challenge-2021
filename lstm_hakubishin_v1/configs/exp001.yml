@@ -4,6 +4,9 @@ input_dir_path: "./data/input/"
 output_dir_path: "./data/output/"
 model_name: "LSTM"
 seed: 71
+fold:
+  shuffle: False
+  n_splits: 5
 params: {
   "nb_epoch": 100,
   "patience": 10,
