@@ -17,6 +17,7 @@ class CustomRunner(Runner):
         )
         if self.is_train_loader:
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.25)
             self.optimizer.step()
             self.optimizer.zero_grad()
 
