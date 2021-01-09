@@ -98,12 +98,28 @@ def run(config: dict) -> None:
             scheduler=scheduler,
             loaders=loaders,
             logdir=logdir,
-            num_epochs=5,
+            num_epochs=config["params"]["num_epochs"],
             verbose=True,
         )
-        import pdb
 
-        pdb.set_trace()
+        score = 0
+        y_val = x_val['city_id'].map(lambda x: x[-1])
+        for loop_i, prediction in enumerate(runner.predict_loader(
+                                            loader=valid_loader,
+                                            resume=f'{logdir}/checkpoints/best.pth',
+                                            model=model,)):
+            correct = y_val.values[loop_i] in np.argsort(prediction.cpu().numpy()[-1, :])[-4:]
+            score += int(correct)
+        score /= len(y_val)
+        print('acc@4', score)
+
+        pred = np.array(list(map(lambda x: x.cpu().numpy()[-1, :],
+                                    runner.predict_loader(
+                                        loader=test_loader,
+                                        resume=f'{logdir}/checkpoints/best.pth',
+                                        model=model,),)))
+        print(pred.shape)
+        np.save(f'y_pred_fold{fold_id}', pred)
 
 
 def main():
