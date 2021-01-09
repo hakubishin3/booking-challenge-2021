@@ -6,13 +6,22 @@ import pandas as pd
 from pathlib import Path
 from sklearn import preprocessing
 from sklearn.model_selection import StratifiedKFold
+from typing import Dict, Type
 
 from src import log, set_out, span, load_train_test_set
 from src.utils import seed_everything
 from src.dataset import Dataset, collate_fn
+from src.models import BookingLSTM
+from src.runner import CustomRunner
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+MODELS: Dict[str, Type[torch.nn.Module]] = {
+    cls.__name__: cls
+    for cls in [
+        BookingLSTM,
+    ]
+}
 
 
 def run(config: dict) -> None:
@@ -72,9 +81,30 @@ def run(config: dict) -> None:
             pin_memory=True,
             shuffle=False,
         )
-        iter(train_dataloader).__next__()
+        model_cls = MODELS[config["model_name"]]
+        model = model_cls(len(target_le.classes_))
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=30, eta_min=1e-6
+        )
+        logdir = f"logdir_{config['exp_name']}/fold{i_fold}"
+        loaders = {"train": train_dataloader, "valid": valid_dataloader}
+        runner = CustomRunner(device=DEVICE)
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            loaders=loaders,
+            logdir=logdir,
+            num_epochs=5,
+            verbose=True,
+        )
+        import pdb
 
-        import pdb; pdb.set_trace()
+        pdb.set_trace()
+
 
 def main():
     parser = argparse.ArgumentParser()

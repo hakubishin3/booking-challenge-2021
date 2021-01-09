@@ -2,7 +2,7 @@ description: ModelNN
 exp_name: "exp001"
 input_dir_path: "./data/input/"
 output_dir_path: "./data/output/"
-model_name: "LSTM"
+model_name: "BookingLSTM"
 seed: 71
 fold:
   shuffle: False
