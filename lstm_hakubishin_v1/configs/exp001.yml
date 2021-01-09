@@ -1,9 +1,9 @@
 description: ModelNN
 exp_name: "exp001"
-data:
-  train: "./data/input/train.csv"
-  test: "./data/input/test.csv"
+input_dir_path: "./data/input/"
+output_dir_path: "./data/output/"
 model_name: "LSTM"
+seed: 71
 params: {
   "nb_epoch": 100,
   "patience": 10,
