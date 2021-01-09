@@ -8,6 +8,6 @@ fold:
   shuffle: False
   n_splits: 5
 params:
-  num_epochs": 10
+  num_epochs: 2
   bacth_size: 256
 evaluation_metric: "log_loss"
