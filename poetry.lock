@@ -59,6 +59,33 @@ optional = false
 python-versions = "~=3.5"
 
 [[package]]
+name = "catalyst"
+version = "20.12"
+description = "Catalyst. PyTorch framework for DL research and development."
+category = "main"
+optional = false
+python-versions = ">=3.6.0"
+
+[package.dependencies]
+numpy = ">=1.16.4"
+packaging = "*"
+PyYAML = "*"
+tensorboardX = ">=2.1.0"
+torch = ">=1.1.0"
+tqdm = ">=4.33.0"
+
+[package.extras]
+all = ["albumentations (>=0.4.3)", "imageio", "kornia (==0.4.1)", "opencv-python-headless", "scikit-image (>=0.14.2)", "segmentation-models-pytorch (>=0.1.0)", "torchvision (>=0.3.0)", "pytest (==5.3.1)", "sphinx-rtd-theme", "sphinx (==2.2.1)", "mock (==3.0.5)", "catalyst-codestyle (==20.06.1)", "catalyst-sphinx-theme (==1.1.2)", "alchemy", "reaction", "plotly (>=4.1.0)", "neptune-client", "visdom", "wandb", "ipython", "scipy", "matplotlib", "pandas (>=0.22)", "scikit-learn (>=0.20)", "GitPython (>=3.1.1)", "transformers (>=2.0.0)", "optuna"]
+contrib = ["albumentations (>=0.4.3)", "imageio", "kornia (==0.4.1)", "opencv-python-headless", "scikit-image (>=0.14.2)", "segmentation-models-pytorch (>=0.1.0)", "torchvision (>=0.3.0)", "alchemy", "reaction", "plotly (>=4.1.0)", "neptune-client", "visdom", "wandb", "ipython", "scipy", "matplotlib", "pandas (>=0.22)", "scikit-learn (>=0.20)", "GitPython (>=3.1.1)", "transformers (>=2.0.0)", "optuna"]
+cv = ["albumentations (>=0.4.3)", "imageio", "kornia (==0.4.1)", "opencv-python-headless", "scikit-image (>=0.14.2)", "segmentation-models-pytorch (>=0.1.0)", "torchvision (>=0.3.0)"]
+dev = ["pytest (==5.3.1)", "sphinx-rtd-theme", "sphinx (==2.2.1)", "mock (==3.0.5)", "catalyst-codestyle (==20.06.1)", "catalyst-sphinx-theme (==1.1.2)"]
+ecosystem = ["alchemy", "reaction"]
+log = ["alchemy", "plotly (>=4.1.0)", "neptune-client", "visdom", "wandb"]
+ml = ["ipython", "scipy", "matplotlib", "pandas (>=0.22)", "scikit-learn (>=0.20)", "GitPython (>=3.1.1)"]
+nlp = ["transformers (>=2.0.0)"]
+tune = ["optuna"]
+
+[[package]]
 name = "certifi"
 version = "2020.12.5"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -578,6 +605,17 @@ docs = ["sphinx (==1.2.3)", "sphinxcontrib-napoleon", "sphinx-rtd-theme", "numpy
 tests = ["pytest", "pytest-cov", "pytest-pep8"]
 
 [[package]]
+name = "packaging"
+version = "20.8"
+description = "Core utilities for Python packages"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[package.dependencies]
+pyparsing = ">=2.0.2"
+
+[[package]]
 name = "pandas"
 version = "1.1.5"
 description = "Powerful data structures for data analysis, time series, and statistics"
@@ -894,6 +932,19 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "tensorboardx"
+version = "2.1"
+description = "TensorBoardX lets you watch Tensors Flow without Tensorflow"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+protobuf = ">=3.8.0"
+six = "*"
+
+[[package]]
 name = "tensorflow"
 version = "2.4.0"
 description = "TensorFlow is an open source machine learning framework for everyone."
@@ -992,7 +1043,7 @@ scipy = ["scipy"]
 name = "tqdm"
 version = "4.55.1"
 description = "Fast, Extensible Progress Meter"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 
@@ -1076,7 +1127,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "7812ec785bfbc8f7a0bc093bc196620d51177f7066606ed30ae3db3dc996f080"
+content-hash = "c1d96f565742779646d062f10eccb3a0230ebede5e4a9e6984551d386d572571"
 
 [metadata.files]
 absl-py = [
@@ -1097,6 +1148,10 @@ black = [
 cachetools = [
     {file = "cachetools-4.2.0-py3-none-any.whl", hash = "sha256:c6b07a6ded8c78bf36730b3dc452dfff7d95f2a12a2fed856b1a0cb13ca78c61"},
     {file = "cachetools-4.2.0.tar.gz", hash = "sha256:3796e1de094f0eaca982441c92ce96c68c89cced4cd97721ab297ea4b16db90e"},
+]
+catalyst = [
+    {file = "catalyst-20.12-py2.py3-none-any.whl", hash = "sha256:584d23422b27badb9c02bd6a7ee35f70fece6d125b79f314e5d9a78482e5fa13"},
+    {file = "catalyst-20.12.tar.gz", hash = "sha256:ba62ac91ab870a1a09d3b63c386b09c00d0369cdf885b18afd9334448f203e4a"},
 ]
 certifi = [
     {file = "certifi-2020.12.5-py2.py3-none-any.whl", hash = "sha256:719a74fb9e33b9bd44cc7f3a8d94bc35e4049deebe19ba7d8e108280cfd59830"},
@@ -1521,6 +1576,10 @@ opt-einsum = [
     {file = "opt_einsum-3.3.0-py3-none-any.whl", hash = "sha256:2455e59e3947d3c275477df7f5205b30635e266fe6dc300e3d9f9646bfcea147"},
     {file = "opt_einsum-3.3.0.tar.gz", hash = "sha256:59f6475f77bbc37dcf7cd748519c0ec60722e91e63ca114e68821c0c54a46549"},
 ]
+packaging = [
+    {file = "packaging-20.8-py2.py3-none-any.whl", hash = "sha256:24e0da08660a87484d1602c30bb4902d74816b6985b93de36926f5bc95741858"},
+    {file = "packaging-20.8.tar.gz", hash = "sha256:78598185a7008a470d64526a8059de9aaa449238f280fc9eb6b13ba6c4109093"},
+]
 pandas = [
     {file = "pandas-1.1.5-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:bf23a3b54d128b50f4f9d4675b3c1857a688cc6731a32f931837d72effb2698d"},
     {file = "pandas-1.1.5-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:5a780260afc88268a9d3ac3511d8f494fdcf637eece62fb9eb656a63d53eb7ca"},
@@ -1816,6 +1875,10 @@ tensorboard = [
 ]
 tensorboard-plugin-wit = [
     {file = "tensorboard_plugin_wit-1.7.0-py3-none-any.whl", hash = "sha256:ee775f04821185c90d9a0e9c56970ee43d7c41403beb6629385b39517129685b"},
+]
+tensorboardx = [
+    {file = "tensorboardX-2.1-py2.py3-none-any.whl", hash = "sha256:2d81c10d9e3225dcd9bb5fb277588610bdf45317603e7682f6953d83b5b38f6a"},
+    {file = "tensorboardX-2.1.tar.gz", hash = "sha256:9e8907cf2ab900542d6cb72bf91aa87b43005a7f0aa43126268697e3727872f9"},
 ]
 tensorflow = [
     {file = "tensorflow-2.4.0-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:576ace48dca1d3c211a3a102ea3a79eda3536a590dcd3d74898122227968b4ac"},
