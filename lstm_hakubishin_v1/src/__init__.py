@@ -2,7 +2,52 @@ import sys
 import time
 import datetime
 import contextlib
+import pandas as pd
 from pathlib import Path
+
+
+def load_train_test_set(config: dict) -> pd.DataFrame:
+    train_test_pickle_path = Path(config["input_dir_path"]) / "train_test_set.pickle"
+    if train_test_pickle_path.exists():
+        train_test_set = pd.read_pickle(train_test_pickle_path)
+    else:
+        train_set = pd.read_csv(
+            Path(config["input_dir_path"]) / "booking_train_set.csv",
+            usecols=[
+                "user_id",
+                "checkin",
+                "checkout",
+                "city_id",
+                "device_class",
+                "affiliate_id",
+                "booker_country",
+                "hotel_country",
+                "utrip_id",
+            ],
+        )
+        test_set = pd.read_csv(
+            Path(config["input_dir_path"]) / "booking_test_set.csv",
+            usecols=[
+                "user_id",
+                "checkin",
+                "checkout",
+                "device_class",
+                "affiliate_id",
+                "booker_country",
+                "utrip_id",
+                "row_num",  # test only
+                "total_rows",  # test only
+                "city_id",
+                "hotel_country",
+            ],
+        )
+        train_test_set = (
+            pd.concat([train_set, test_set], sort=False)
+            .sort_values(["utrip_id", "checkin"])
+            .reset_index(drop=True)
+        )
+        train_test_set.to_pickle(train_test_pickle_path)
+    return train_test_set
 
 
 class _Logger:

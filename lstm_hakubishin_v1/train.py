@@ -1,12 +1,14 @@
 import yaml
 import argparse
-from src import log, set_out, span
+from src import log, set_out, span, load_train_test_set
 from src.utils import seed_everything
 
 
 def run(config: dict) -> None:
     seed_everything(71)
-    print("a")
+    train_test_set = load_train_test_set(config)
+    print(train_test_set.shape)
+    import pdb; pdb.set_trace()
 
 
 def main():
