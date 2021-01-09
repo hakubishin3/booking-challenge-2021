@@ -42,7 +42,7 @@ def run(config: dict, debug: bool) -> None:
         test = train_test_set[~train_test_set["row_num"].isnull()]
 
         train_trips = train.groupby("utrip_id")["city_id"].apply(list)
-        test_trips = test.query("city_id != 0").groupby("utrip_id")["city_id"].apply(list)
+        test_trips = test.groupby("utrip_id")["city_id"].apply(list)
 
         x_train = pd.DataFrame(train_trips)
         x_test = pd.DataFrame(test_trips)
@@ -152,7 +152,7 @@ def run(config: dict, debug: bool) -> None:
             )
         )
         print(pred.shape)
-        np.save(f"y_pred_fold{i_fold}", pred)
+        np.save(Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold{i_fold}", pred)
 
 
 def main():
