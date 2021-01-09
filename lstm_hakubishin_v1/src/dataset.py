@@ -15,7 +15,9 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index: int):
         city_ids = self.df["city_id"].values[index]
+        # Remove last city_id for input sequence
         city_id_tensor = city_ids[:-1]
+        # Remove first city_id for target sequence
         target_tensor = city_ids[1:]
 
         if self.is_train:
