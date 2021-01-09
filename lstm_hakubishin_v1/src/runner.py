@@ -24,7 +24,7 @@ class CustomRunner(Runner):
     def predict_batch(self, batch):
         batch = any2device(batch, self.device)
         if len(batch) == 1:
-            x = batch
+            x, = batch
         elif len(batch) == 2:
             x, y = batch
         else:
