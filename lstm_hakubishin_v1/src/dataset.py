@@ -24,16 +24,22 @@ class Dataset(torch.utils.data.Dataset):
             return (city_id_tensor,)
 
 
-def collate_fn(batch):
-    seqs = [item[0] for item in batch]
-    target = [item[1] for item in batch]
-    lens = [len(x) for x in seqs]
-    max_len = max(lens)
-    seqs = sequence.pad_sequences(seqs, maxlen=int(max_len))
-    seqs = torch.tensor(seqs, dtype=torch.long)
-    target = sequence.pad_sequences(target, maxlen=int(max_len))
-    target = torch.tensor(target, dtype=torch.long)
-    return (
-        seqs,
-        target,
-    )
+class Collator(object):
+    def __init__(self, is_train=True):
+        self.is_train = is_train
+
+    def __call__(self, batch):
+        seqs = [item[0] for item in batch]
+        if self.is_train:
+            targets = [item[1] for item in batch]
+
+        lens = [len(s) for s in seqs]
+        max_len = max(lens)
+        seqs = sequence.pad_sequences(seqs, maxlen=max_len)
+        seqs = torch.tensor(seqs, dtype=torch.long)
+        if self.is_train:
+            targets = sequence.pad_sequences(targets, maxlen=max_len)
+            targets = torch.tensor(targets, dtype=torch.long)
+            return (seqs, targets)
+
+        return (seqs,)
