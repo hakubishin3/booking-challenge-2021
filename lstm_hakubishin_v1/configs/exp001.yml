@@ -1,0 +1,12 @@
+description: ModelNN
+exp_name: "exp001"
+data:
+  train: "./data/input/train.csv"
+  test: "./data/input/test.csv"
+model_name: "LSTM"
+params: {
+  "nb_epoch": 100,
+  "patience": 10,
+  "dropout": 0.4,
+}
+evaluation_metric: "log_loss"
