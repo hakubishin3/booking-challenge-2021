@@ -106,9 +106,6 @@ def run(config: dict, debug: bool) -> None:
         model = model_cls(len(target_le.classes_))
         criterion = torch.nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=30, eta_min=1e-6
-        )
         logdir = Path(config["output_dir_path"]) / config["exp_name"] / f"fold{i_fold}"
         loaders = {"train": train_dataloader, "valid": valid_dataloader}
         runner = CustomRunner(device=DEVICE)
@@ -116,13 +113,13 @@ def run(config: dict, debug: bool) -> None:
             model=model,
             criterion=criterion,
             optimizer=optimizer,
-            scheduler=scheduler,
             loaders=loaders,
             logdir=logdir,
             num_epochs=config["params"]["num_epochs"],
             verbose=True,
         )
 
+        """
         score = 0
         y_val = x_val["city_id"].map(lambda x: x[-1])
         for loop_i, prediction in enumerate(
@@ -153,6 +150,7 @@ def run(config: dict, debug: bool) -> None:
         )
         print(pred.shape)
         np.save(Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold{i_fold}", pred)
+        """
 
 
 def main():
