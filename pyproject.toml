@@ -17,6 +17,8 @@ google-cloud-bigquery = {extras = ["bqstorage", "pandas"], version = "^2.4.0"}
 gensim = "^3.8.3"
 torch = "^1.7.0"
 torchvision = "^0.8.2"
+Keras = "^2.4.3"
+tensorflow = "^2.4.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.790"
