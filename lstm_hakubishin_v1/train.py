@@ -88,7 +88,7 @@ def run(config: dict) -> None:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=30, eta_min=1e-6
         )
-        logdir = f"logdir_{config['exp_name']}/fold{i_fold}"
+        logdir = Path(config["output_dir_path"]) / config["exp_name"] / f"fold{i_fold}"
         loaders = {"train": train_dataloader, "valid": valid_dataloader}
         runner = CustomRunner(device=DEVICE)
         runner.train(
