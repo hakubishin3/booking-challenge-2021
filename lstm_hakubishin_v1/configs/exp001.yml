@@ -7,9 +7,9 @@ seed: 71
 fold:
   shuffle: False
   n_splits: 5
-params: {
-  "nb_epoch": 100,
-  "patience": 10,
-  "dropout": 0.4,
-}
+params:
+  nb_epoch": 100
+  patience": 10
+  dropout": 0.4
+  bacth_size: 4
 evaluation_metric: "log_loss"

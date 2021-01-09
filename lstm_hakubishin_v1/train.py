@@ -1,3 +1,4 @@
+import os
 import yaml
 import torch
 import argparse
@@ -8,6 +9,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from src import log, set_out, span, load_train_test_set
 from src.utils import seed_everything
+from src.dataset import Dataset, collate_fn
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -48,10 +50,31 @@ def run(config: dict) -> None:
     )
     folds = cv.split(x_train, pd.cut(x_train["n_trips"], 5, labels=False))
 
-    import pdb
+    log("Training:")
+    for i_fold, (trn_idx, val_idx) in enumerate(folds):
+        log(f"Fold = {i_fold}")
+        x_trn = x_train.loc[trn_idx, :]
+        x_val = x_train.loc[val_idx, :]
+        train_dataset = Dataset(x_trn, is_train=True)
+        valid_dataset = Dataset(x_trn, is_train=False)
+        train_dataloader = torch.utils.data.DataLoader(
+            train_dataset,
+            batch_size=config["params"]["bacth_size"],
+            num_workers=os.cpu_count(),
+            pin_memory=True,
+            collate_fn=collate_fn,
+            shuffle=True,
+        )
+        valid_dataloader = torch.utils.data.DataLoader(
+            valid_dataset,
+            batch_size=config["params"]["bacth_size"],
+            num_workers=os.cpu_count(),
+            pin_memory=True,
+            shuffle=False,
+        )
+        iter(train_dataloader).__next__()
 
-    pdb.set_trace()
-
+        import pdb; pdb.set_trace()
 
 def main():
     parser = argparse.ArgumentParser()
