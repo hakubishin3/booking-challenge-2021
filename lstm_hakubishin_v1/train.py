@@ -49,6 +49,9 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         train_test_set["city_id"] = target_le.fit_transform(train_test_set["city_id"])
         train_test_set["past_city_id"] = target_le.transform(train_test_set["past_city_id"])
 
+        # 前回のcity_idが0であるレコードを除外する(初回の旅行を除外)
+        train_test_set = train_test_set.query("past_city_id != 0").reset_index(drop=True)
+
         log("Encode of categorical values.")
         cat_le = {}
         for c in CATEGORICAL_COLS:
@@ -66,7 +69,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         x_train = pd.concat(x_train, axis=1)
         x_test = pd.concat(x_test, axis=1)
 
-        x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x))
+        x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x) + 1)   # 前回のcity_idが0であるレコードを除外するので, その分で + 1している
         x_train = x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
         x_test = x_test.reset_index(drop=True)
         log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
