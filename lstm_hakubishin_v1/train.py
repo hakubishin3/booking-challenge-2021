@@ -147,6 +147,10 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 n_booker_country=len(cat_le["booker_country"].classes_),
                 n_device_class=len(cat_le["device_class"].classes_),
                 n_affiliate_id=len(cat_le["affiliate_id"].classes_),
+                emb_dim=config["params"]["emb_dim"],
+                rnn_dim=config["params"]["rnn_dim"],
+                dropout=config["params"]["dropout"],
+                rnn_dropout=config["params"]["rnn_dropout"],
             )
             if i_fold == 0:
                 log(f"{summary(model)}")

@@ -10,4 +10,7 @@ fold:
 params:
   num_epochs: 10
   bacth_size: 32
-evaluation_metric: "log_loss"
+  emb_dim: 512
+  rnn_dim: 512
+  dropout: 0.3
+  rnn_dropout: 0.3
