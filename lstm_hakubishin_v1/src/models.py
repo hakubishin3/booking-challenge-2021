@@ -21,6 +21,7 @@ class BookingLSTM(nn.Module):
             hidden_size=rnn_dim,
             num_layers=num_layers,
             dropout=rnn_dropout,
+            bidirectional=False,
         )
         self.dense = nn.Linear(rnn_dim, vocab_size)
 
