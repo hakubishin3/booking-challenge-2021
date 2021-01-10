@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn import preprocessing
 from sklearn.model_selection import StratifiedKFold
+from torchsummary import summary
 from typing import Dict, Type
 
 from src import log, set_out, span, load_train_test_set
@@ -81,76 +82,79 @@ def run(config: dict, debug: bool) -> None:
     for i_fold, (trn_idx, val_idx) in enumerate(folds):
         if i_fold > 0:
             break
-        log(f"Fold = {i_fold}")
-        x_trn = x_train.loc[trn_idx, :]
-        x_val = x_train.loc[val_idx, :]
-        train_dataset = Dataset(x_trn, is_train=True)
-        valid_dataset = Dataset(x_val, is_train=True)
-        train_dataloader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=config["params"]["bacth_size"],
-            num_workers=os.cpu_count(),
-            pin_memory=True,
-            collate_fn=Collator(is_train=True),
-            shuffle=True,
-        )
-        valid_dataloader = torch.utils.data.DataLoader(
-            valid_dataset,
-            batch_size=config["params"]["bacth_size"],
-            num_workers=os.cpu_count(),
-            pin_memory=True,
-            collate_fn=Collator(is_train=True),
-            shuffle=False,
-        )
-        model_cls = MODELS[config["model_name"]]
-        model = model_cls(len(target_le.classes_))
-        criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-        logdir = Path(config["output_dir_path"]) / config["exp_name"] / f"fold{i_fold}"
-        loaders = {"train": train_dataloader, "valid": valid_dataloader}
-        runner = CustomRunner(device=DEVICE)
-        runner.train(
-            model=model,
-            criterion=criterion,
-            optimizer=optimizer,
-            loaders=loaders,
-            logdir=logdir,
-            num_epochs=config["params"]["num_epochs"],
-            verbose=True,
-        )
+        with span(f"Fold = {i_fold}"):
+            x_trn = x_train.loc[trn_idx, :]
+            x_val = x_train.loc[val_idx, :]
+            train_dataset = Dataset(x_trn, is_train=True)
+            valid_dataset = Dataset(x_val, is_train=True)
+            train_dataloader = torch.utils.data.DataLoader(
+                train_dataset,
+                batch_size=config["params"]["bacth_size"],
+                num_workers=os.cpu_count(),
+                pin_memory=True,
+                collate_fn=Collator(is_train=True),
+                shuffle=True,
+            )
+            valid_dataloader = torch.utils.data.DataLoader(
+                valid_dataset,
+                batch_size=config["params"]["bacth_size"],
+                num_workers=os.cpu_count(),
+                pin_memory=True,
+                collate_fn=Collator(is_train=True),
+                shuffle=False,
+            )
+            model_cls = MODELS[config["model_name"]]
+            model = model_cls(len(target_le.classes_), tie_weight=config["params"]["tie_weight"])
+            if i_fold == 0:
+                log(f"{summary(model)}")
 
-        """
-        score = 0
-        y_val = x_val["city_id"].map(lambda x: x[-1])
-        for loop_i, prediction in enumerate(
-            runner.predict_loader(
-                loader=valid_dataloader,
-                resume=f"{logdir}/checkpoints/best.pth",
+            criterion = torch.nn.CrossEntropyLoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+            logdir = Path(config["output_dir_path"]) / config["exp_name"] / f"fold{i_fold}"
+            loaders = {"train": train_dataloader, "valid": valid_dataloader}
+            runner = CustomRunner(device=DEVICE)
+            runner.train(
                 model=model,
+                criterion=criterion,
+                optimizer=optimizer,
+                loaders=loaders,
+                logdir=logdir,
+                num_epochs=config["params"]["num_epochs"],
+                verbose=True,
             )
-        ):
-            correct = (
-                y_val.values[loop_i] in np.argsort(prediction.cpu().numpy()[-1, :])[-4:]
-            )
-            score += int(correct)
-        score /= len(y_val)
-        print("acc@4", score)
 
-        pred = np.array(
-            list(
-                map(
-                    lambda x: x.cpu().numpy()[-1, :],
-                    runner.predict_loader(
-                        loader=test_dataloader,
-                        resume=f"{logdir}/checkpoints/best.pth",
-                        model=model,
-                    ),
+            """
+            score = 0
+            y_val = x_val["city_id"].map(lambda x: x[-1])
+            for loop_i, prediction in enumerate(
+                runner.predict_loader(
+                    loader=valid_dataloader,
+                    resume=f"{logdir}/checkpoints/best.pth",
+                    model=model,
+                )
+            ):
+                correct = (
+                    y_val.values[loop_i] in np.argsort(prediction.cpu().numpy()[-1, :])[-4:]
+                )
+                score += int(correct)
+            score /= len(y_val)
+            print("acc@4", score)
+
+            pred = np.array(
+                list(
+                    map(
+                        lambda x: x.cpu().numpy()[-1, :],
+                        runner.predict_loader(
+                            loader=test_dataloader,
+                            resume=f"{logdir}/checkpoints/best.pth",
+                            model=model,
+                        ),
+                    )
                 )
             )
-        )
-        print(pred.shape)
-        np.save(Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold{i_fold}", pred)
-        """
+            print(pred.shape)
+            np.save(Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold{i_fold}", pred)
+            """
 
 
 def main():
