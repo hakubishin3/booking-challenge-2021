@@ -26,7 +26,7 @@ MODELS: Dict[str, Type[torch.nn.Module]] = {
 }
 
 
-def run(config: dict, debug: bool) -> None:
+def run(config: dict, holdout: bool, debug: bool) -> None:
     log("Run with configuration:")
     log(f"{config}")
     seed_everything(config["seed"])
@@ -80,7 +80,7 @@ def run(config: dict, debug: bool) -> None:
 
     log("Training:")
     for i_fold, (trn_idx, val_idx) in enumerate(folds):
-        if i_fold > 0:
+        if holdout and i_fold > 0:
             break
         with span(f"Fold = {i_fold}"):
             x_trn = x_train.loc[trn_idx, :]
@@ -97,7 +97,7 @@ def run(config: dict, debug: bool) -> None:
             )
             valid_dataloader = torch.utils.data.DataLoader(
                 valid_dataset,
-                batch_size=config["params"]["bacth_size"],
+                batch_size=1,
                 num_workers=os.cpu_count(),
                 pin_memory=True,
                 collate_fn=Collator(is_train=True),
@@ -123,7 +123,6 @@ def run(config: dict, debug: bool) -> None:
                 verbose=True,
             )
 
-            """
             score = 0
             y_val = x_val["city_id"].map(lambda x: x[-1])
             for loop_i, prediction in enumerate(
@@ -138,8 +137,9 @@ def run(config: dict, debug: bool) -> None:
                 )
                 score += int(correct)
             score /= len(y_val)
-            print("acc@4", score)
+            log(f"val acc@4: {score}")
 
+            """
             pred = np.array(
                 list(
                     map(
@@ -161,6 +161,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--holdout", action="store_true")
     args = parser.parse_args()
     with open(args.config, "r") as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
@@ -170,7 +171,7 @@ def main():
         output_path.mkdir(parents=True)
     set_out(output_path / "train_log.txt")
 
-    run(config, args.debug)
+    run(config, args.holdout, args.debug)
 
 
 if __name__ == "__main__":
