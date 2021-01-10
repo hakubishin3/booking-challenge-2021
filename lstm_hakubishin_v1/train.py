@@ -27,6 +27,8 @@ MODELS: Dict[str, Type[torch.nn.Module]] = {
 }
 CATEGORICAL_COLS = [
     "booker_country",
+    "device_class",
+    "affiliate_id",
 ]
 
 
@@ -42,21 +44,32 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
     with span("Preprocessing:"):
         log("Shift target values for input sequence.")
         unk_city_id = 0
-        train_test_set["past_city_id"] = train_test_set.groupby("utrip_id")["city_id"].shift(1).fillna(unk_city_id).astype(int)
+        train_test_set["past_city_id"] = (
+            train_test_set.groupby("utrip_id")["city_id"]
+            .shift(1)
+            .fillna(unk_city_id)
+            .astype(int)
+        )
 
         log("Encode of target values.")
         target_le = preprocessing.LabelEncoder()
         train_test_set["city_id"] = target_le.fit_transform(train_test_set["city_id"])
-        train_test_set["past_city_id"] = target_le.transform(train_test_set["past_city_id"])
+        train_test_set["past_city_id"] = target_le.transform(
+            train_test_set["past_city_id"]
+        )
 
         # 前回のcity_idが0であるレコードを除外する(初回の旅行を除外)
-        train_test_set = train_test_set.query("past_city_id != 0").reset_index(drop=True)
+        train_test_set = train_test_set.query("past_city_id != 0").reset_index(
+            drop=True
+        )
 
         log("Encode of categorical values.")
         cat_le = {}
         for c in CATEGORICAL_COLS:
             le = preprocessing.LabelEncoder()
-            train_test_set[c] = le.fit_transform(train_test_set[c].fillna("UNK").astype(str).values)
+            train_test_set[c] = le.fit_transform(
+                train_test_set[c].fillna("UNK").astype(str).values
+            )
             cat_le[c] = le
 
         train = train_test_set[train_test_set["row_num"].isnull()]
@@ -69,8 +82,12 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         x_train = pd.concat(x_train, axis=1)
         x_test = pd.concat(x_test, axis=1)
 
-        x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x) + 1)   # 前回のcity_idが0であるレコードを除外するので, その分で + 1している
-        x_train = x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
+        x_train["n_trips"] = x_train["city_id"].map(
+            lambda x: len(x) + 1
+        )  # 前回のcity_idが0であるレコードを除外するので, その分で + 1している
+        x_train = (
+            x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
+        )
         x_test = x_test.reset_index(drop=True)
         log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
 
@@ -96,7 +113,6 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         cv = StratifiedKFold(
             n_splits=config["fold"]["n_splits"],
             shuffle=config["fold"]["shuffle"],
-            random_state=config["seed"],
         )
         folds = cv.split(x_train, pd.cut(x_train["n_trips"], 5, labels=False))
 
@@ -129,19 +145,27 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             model = model_cls(
                 n_city_id=len(target_le.classes_),
                 n_booker_country=len(cat_le["booker_country"].classes_),
+                n_device_class=len(cat_le["device_class"].classes_),
+                n_affiliate_id=len(cat_le["affiliate_id"].classes_),
             )
             if i_fold == 0:
                 log(f"{summary(model)}")
 
             criterion = torch.nn.CrossEntropyLoss()
             optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-            logdir = Path(config["output_dir_path"]) / config["exp_name"] / f"fold{i_fold}"
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=30, eta_min=1e-6
+            )
+            logdir = (
+                Path(config["output_dir_path"]) / config["exp_name"] / f"fold{i_fold}"
+            )
             loaders = {"train": train_dataloader, "valid": valid_dataloader}
             runner = CustomRunner(device=DEVICE)
             runner.train(
                 model=model,
                 criterion=criterion,
                 optimizer=optimizer,
+                scheduler=scheduler,
                 loaders=loaders,
                 logdir=logdir,
                 num_epochs=config["params"]["num_epochs"],
@@ -158,7 +182,8 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 )
             ):
                 correct = (
-                    y_val.values[loop_i] in np.argsort(prediction.cpu().numpy()[-1, :])[-4:]
+                    y_val.values[loop_i]
+                    in np.argsort(prediction.cpu().numpy()[-1, :])[-4:]
                 )
                 score += int(correct)
             score /= len(y_val)

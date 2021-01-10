@@ -5,10 +5,9 @@ output_dir_path: "./data/output/"
 model_name: "BookingLSTM"
 seed: 71
 fold:
-  shuffle: True
+  shuffle: False
   n_splits: 5
 params:
   num_epochs: 10
-  bacth_size: 256
-  tie_weight: False
+  bacth_size: 32
 evaluation_metric: "log_loss"
