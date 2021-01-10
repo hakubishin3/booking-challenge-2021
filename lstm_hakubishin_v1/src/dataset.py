@@ -14,16 +14,17 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.df)
 
     def __getitem__(self, index: int):
-        city_ids = self.df["city_id"].values[index]
         # Remove last city_id for input sequence
-        city_id_tensor = city_ids[:-1]
+        city_id_tensor = self.df["past_city_id"].values[index]
+        booker_country_tensor = self.df["booker_country"].values[index]
+
         # Remove first city_id for target sequence
-        target_tensor = city_ids[1:]
+        target_tensor = self.df["city_id"].values[index]
 
         if self.is_train:
-            return (city_id_tensor, target_tensor)
+            return (city_id_tensor, booker_country_tensor, target_tensor)
         else:
-            return (city_id_tensor,)
+            return (city_id_tensor, booker_country_tensor)
 
 
 class Collator(object):
@@ -32,16 +33,19 @@ class Collator(object):
 
     def __call__(self, batch):
         seqs = [item[0] for item in batch]
+        cats = [item[1] for item in batch]
         if self.is_train:
-            targets = [item[1] for item in batch]
+            targets = [item[2] for item in batch]
+
+        def _pad_sequences(data, maxlen: int) -> torch.tensor:
+            data = sequence.pad_sequences(data, maxlen=maxlen)
+            return torch.tensor(data, dtype=torch.long)
 
         lens = [len(s) for s in seqs]
-        max_len = max(lens)
-        seqs = sequence.pad_sequences(seqs, maxlen=max_len)
-        seqs = torch.tensor(seqs, dtype=torch.long)
+        seqs = _pad_sequences(seqs, max(lens))
+        cats = _pad_sequences(cats, max(lens))
         if self.is_train:
-            targets = sequence.pad_sequences(targets, maxlen=max_len)
-            targets = torch.tensor(targets, dtype=torch.long)
-            return (seqs, targets)
+            targets = _pad_sequences(targets, max(lens))
+            return (seqs, cats, targets)
 
-        return (seqs,)
+        return (seqs, cats)

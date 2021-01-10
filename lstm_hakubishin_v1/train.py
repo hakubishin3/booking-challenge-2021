@@ -1,6 +1,7 @@
 import os
 import yaml
 import torch
+import bisect
 import argparse
 import numpy as np
 import pandas as pd
@@ -24,6 +25,9 @@ MODELS: Dict[str, Type[torch.nn.Module]] = {
         BookingLSTM,
     ]
 }
+CATEGORICAL_COLS = [
+    "booker_country",
+]
 
 
 def run(config: dict, holdout: bool, debug: bool) -> None:
@@ -36,17 +40,31 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         log(f"{train_test_set.shape}")
 
     with span("Preprocessing:"):
+        log("Shift target values for input sequence.")
+        unk_city_id = 0
+        train_test_set["past_city_id"] = train_test_set.groupby("utrip_id")["city_id"].shift(1).fillna(unk_city_id).astype(int)
+
+        log("Encode of target values.")
         target_le = preprocessing.LabelEncoder()
         train_test_set["city_id"] = target_le.fit_transform(train_test_set["city_id"])
+        train_test_set["past_city_id"] = target_le.transform(train_test_set["past_city_id"])
+
+        log("Encode of categorical values.")
+        cat_le = {}
+        for c in CATEGORICAL_COLS:
+            le = preprocessing.LabelEncoder()
+            train_test_set[c] = le.fit_transform(train_test_set[c].fillna("UNK").astype(str).values)
+            cat_le[c] = le
 
         train = train_test_set[train_test_set["row_num"].isnull()]
         test = train_test_set[~train_test_set["row_num"].isnull()]
 
-        train_trips = train.groupby("utrip_id")["city_id"].apply(list)
-        test_trips = test.groupby("utrip_id")["city_id"].apply(list)
-
-        x_train = pd.DataFrame(train_trips)
-        x_test = pd.DataFrame(test_trips)
+        x_train, x_test = [], []
+        for c in ["city_id", "past_city_id"] + CATEGORICAL_COLS:
+            x_train.append(train.groupby("utrip_id")[c].apply(list))
+            x_test.append(test.groupby("utrip_id")[c].apply(list))
+        x_train = pd.concat(x_train, axis=1)
+        x_test = pd.concat(x_test, axis=1)
 
         x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x))
         x_train = x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
@@ -57,6 +75,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             log("'--debug' specified. Shrink data size into 1000.")
             x_train = x_train.iloc[:1000]
             x_test = x_test.iloc[:1000]
+            config["params"]["num_epochs"] = 2
             log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
 
     with span("Prepare data loader for test:"):
@@ -104,7 +123,10 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 shuffle=False,
             )
             model_cls = MODELS[config["model_name"]]
-            model = model_cls(len(target_le.classes_), tie_weight=config["params"]["tie_weight"])
+            model = model_cls(
+                n_city_id=len(target_le.classes_),
+                n_booker_country=len(cat_le["booker_country"].classes_),
+            )
             if i_fold == 0:
                 log(f"{summary(model)}")
 
