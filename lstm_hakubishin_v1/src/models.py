@@ -10,9 +10,9 @@ class BookingLSTM(nn.Module):
         n_device_class,
         n_affiliate_id,
         n_month_checkin,
-        n_num_checkin,
         emb_dim=512,
         rnn_dim=512,
+        hidden_size=512,
         num_layers=2,
         dropout=0.3,
         rnn_dropout=0.3,
@@ -24,22 +24,30 @@ class BookingLSTM(nn.Module):
         self.device_class_embedding = nn.Embedding(n_device_class, emb_dim)
         self.affiliate_id_embedding = nn.Embedding(n_affiliate_id, emb_dim)
         self.month_checkin_embedding = nn.Embedding(n_month_checkin, emb_dim)
-        self.num_checkin_embedding = nn.Embedding(n_num_checkin, emb_dim)
 
-        self.linear = nn.Linear(emb_dim * 6 + 1, emb_dim)
+        self.cate_proj = nn.Sequential(
+            nn.Linear(emb_dim * 5, hidden_size // 2),
+            nn.LayerNorm(hidden_size // 2),
+        )
+        self.cont_emb = nn.Sequential(
+            nn.Linear(2, hidden_size // 2),
+            nn.LayerNorm(hidden_size // 2),
+        )
+
         self.lstm = nn.LSTM(
-            input_size=emb_dim,
-            hidden_size=rnn_dim,
+            input_size=hidden_size,
+            hidden_size=hidden_size,
             num_layers=num_layers,
             dropout=rnn_dropout,
             bidirectional=False,
             batch_first=True,
         )
         self.ffn = nn.Sequential(
-            nn.Linear(rnn_dim, emb_dim),
-            nn.ReLU(inplace=True),
+            nn.Linear(hidden_size, hidden_size),
+            nn.LayerNorm(hidden_size),
             nn.Dropout(dropout),
-            nn.Linear(emb_dim, n_city_id),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_size, n_city_id),
         )
 
         self.n_city_id = n_city_id
@@ -65,23 +73,32 @@ class BookingLSTM(nn.Module):
         device_class_embedding = self.device_class_embedding(device_class_tensor)
         affiliate_id_embedding = self.affiliate_id_embedding(affiliate_id_tensor)
         month_checkin_embedding = self.month_checkin_embedding(month_checkin_tensor)
-        num_checkin_embedding = self.num_checkin_embedding(num_checkin_tensor)
+        num_checkin_feature = num_checkin_tensor.unsqueeze(2)
         days_stay_feature = days_stay_tensor.unsqueeze(2)
 
-        out_s = torch.cat(
+        cate_emb = torch.cat(
             [
                 city_id_embedding,
                 booker_country_embedding,
                 device_class_embedding,
                 affiliate_id_embedding,
                 month_checkin_embedding,
-                num_checkin_embedding,
             ],
             dim=2,
         )
-        out_s = torch.cat([out_s, days_stay_feature], dim=2)
+        cate_emb = self.cate_proj(cate_emb)
 
-        out_s = self.linear(self.drop(out_s))
+        cont_emb = torch.cat(
+            [
+                num_checkin_feature,
+                days_stay_feature,
+            ],
+            dim=2,
+        )
+        cont_emb = self.cont_emb(cont_emb)
+
+        out_s = torch.cat([cate_emb, cont_emb], dim=2)
+
         out_s, _ = self.lstm(out_s)
         out_s = self.ffn(
             out_s.contiguous().view(out_s.size(0) * out_s.size(1), out_s.size(2))

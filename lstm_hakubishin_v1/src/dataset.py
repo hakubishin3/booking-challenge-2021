@@ -71,8 +71,12 @@ class Collator(object):
         device_class_tensor = _pad_sequences(device_class_tensor, max(lens))
         affiliate_id_tensor = _pad_sequences(affiliate_id_tensor, max(lens))
         month_checkin_tensor = _pad_sequences(month_checkin_tensor, max(lens))
-        num_checkin_tensor = _pad_sequences(num_checkin_tensor, max(lens))
-        days_stay_tensor = _pad_sequences(days_stay_tensor, max(lens), dtype=torch.float)
+        num_checkin_tensor = _pad_sequences(
+            num_checkin_tensor, max(lens), dtype=torch.float
+        )
+        days_stay_tensor = _pad_sequences(
+            days_stay_tensor, max(lens), dtype=torch.float
+        )
         if self.is_train:
             targets = _pad_sequences(targets, max(lens))
             return (

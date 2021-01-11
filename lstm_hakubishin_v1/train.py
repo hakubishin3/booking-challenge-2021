@@ -30,11 +30,12 @@ CATEGORICAL_COLS = [
     "device_class",
     "affiliate_id",
     "month_checkin",
-    "num_checkin",
 ]
 NUMERICAL_COLS = [
     "days_stay",
+    "num_checkin",
 ]
+
 
 def run(config: dict, holdout: bool, debug: bool) -> None:
     log("Run with configuration:")
@@ -66,8 +67,14 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         train_test_set["checkin"] = pd.to_datetime(train_test_set["checkin"])
         train_test_set["checkout"] = pd.to_datetime(train_test_set["checkout"])
         train_test_set["month_checkin"] = train_test_set["checkin"].dt.month
-        train_test_set["days_stay"] = (train_test_set["checkout"] - train_test_set["checkin"]).dt.days.apply(lambda x: np.log10(x))
-        train_test_set["num_checkin"] = train_test_set.groupby("utrip_id")["checkin"].rank()
+        train_test_set["days_stay"] = (
+            train_test_set["checkout"] - train_test_set["checkin"]
+        ).dt.days.apply(lambda x: np.log10(x))
+        train_test_set["num_checkin"] = (
+            train_test_set.groupby("utrip_id")["checkin"]
+            .rank()
+            .apply(lambda x: np.log10(x))
+        )
 
         # 前回のcity_idが0であるレコードを除外する(初回の旅行を除外)
         train_test_set = train_test_set.query("past_city_id != 0").reset_index(
@@ -159,7 +166,6 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 n_device_class=len(cat_le["device_class"].classes_),
                 n_affiliate_id=len(cat_le["affiliate_id"].classes_),
                 n_month_checkin=len(cat_le["month_checkin"].classes_),
-                n_num_checkin=len(cat_le["num_checkin"].classes_),
                 emb_dim=config["params"]["emb_dim"],
                 rnn_dim=config["params"]["rnn_dim"],
                 dropout=config["params"]["dropout"],
