@@ -30,7 +30,7 @@ class BookingLSTM(nn.Module):
             nn.LayerNorm(hidden_size // 2),
         )
         self.cont_emb = nn.Sequential(
-            nn.Linear(2, hidden_size // 2),
+            nn.Linear(3, hidden_size // 2),
             nn.LayerNorm(hidden_size // 2),
         )
 
@@ -67,6 +67,7 @@ class BookingLSTM(nn.Module):
         month_checkin_tensor,
         num_checkin_tensor,
         days_stay_tensor,
+        days_move_tensor,
     ):
         city_id_embedding = self.city_id_embedding(city_id_tensor)
         booker_country_embedding = self.booker_country_embedding(booker_country_tensor)
@@ -75,6 +76,7 @@ class BookingLSTM(nn.Module):
         month_checkin_embedding = self.month_checkin_embedding(month_checkin_tensor)
         num_checkin_feature = num_checkin_tensor.unsqueeze(2)
         days_stay_feature = days_stay_tensor.unsqueeze(2)
+        days_move_feature = days_move_tensor.unsqueeze(2)
 
         cate_emb = torch.cat(
             [
@@ -92,6 +94,7 @@ class BookingLSTM(nn.Module):
             [
                 num_checkin_feature,
                 days_stay_feature,
+                days_move_feature,
             ],
             dim=2,
         )

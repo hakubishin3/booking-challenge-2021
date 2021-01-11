@@ -22,6 +22,7 @@ class Dataset(torch.utils.data.Dataset):
         month_checkin_tensor = self.df["month_checkin"].values[index]
         num_checkin_tensor = self.df["num_checkin"].values[index]
         days_stay_tensor = self.df["days_stay"].values[index]
+        days_move_tensor = self.df["days_move"].values[index]
 
         if self.is_train:
             return (
@@ -32,6 +33,7 @@ class Dataset(torch.utils.data.Dataset):
                 month_checkin_tensor,
                 num_checkin_tensor,
                 days_stay_tensor,
+                days_move_tensor,
                 target_tensor,
             )
         else:
@@ -43,6 +45,7 @@ class Dataset(torch.utils.data.Dataset):
                 month_checkin_tensor,
                 num_checkin_tensor,
                 days_stay_tensor,
+                days_move_tensor,
             )
 
 
@@ -58,6 +61,7 @@ class Collator(object):
         month_checkin_tensor = [item[4] for item in batch]
         num_checkin_tensor = [item[5] for item in batch]
         days_stay_tensor = [item[6] for item in batch]
+        days_move_tensor = [item[7] for item in batch]
         if self.is_train:
             targets = [item[-1] for item in batch]
 
@@ -77,6 +81,9 @@ class Collator(object):
         days_stay_tensor = _pad_sequences(
             days_stay_tensor, max(lens), dtype=torch.float
         )
+        days_move_tensor = _pad_sequences(
+            days_move_tensor, max(lens), dtype=torch.float
+        )
         if self.is_train:
             targets = _pad_sequences(targets, max(lens))
             return (
@@ -87,6 +94,7 @@ class Collator(object):
                 month_checkin_tensor,
                 num_checkin_tensor,
                 days_stay_tensor,
+                days_move_tensor,
                 targets,
             )
 
@@ -98,4 +106,5 @@ class Collator(object):
             month_checkin_tensor,
             num_checkin_tensor,
             days_stay_tensor,
+            days_move_tensor,
         )
