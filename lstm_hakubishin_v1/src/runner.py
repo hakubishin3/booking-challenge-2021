@@ -11,6 +11,9 @@ class CustomRunner(Runner):
             booker_country_tensor,
             device_class_tensor,
             affiliate_id_tensor,
+            month_checkin_tensor,
+            num_checkin_tensor,
+            days_stay_tensor,
             y,
         ) = batch
         out = self.model(
@@ -18,6 +21,9 @@ class CustomRunner(Runner):
             booker_country_tensor,
             device_class_tensor,
             affiliate_id_tensor,
+            month_checkin_tensor,
+            num_checkin_tensor,
+            days_stay_tensor,
         )
         loss = self.criterion(out, y.view(y.size(0) * y.size(1)))
         accuracy01, accuracy04 = metrics.accuracy(
@@ -34,19 +40,25 @@ class CustomRunner(Runner):
     @torch.no_grad()
     def predict_batch(self, batch):
         batch = any2device(batch, self.device)
-        if len(batch) == 4:
+        if len(batch) == 7:
             (
                 city_id_tensor,
                 booker_country_tensor,
                 device_class_tensor,
                 affiliate_id_tensor,
+                month_checkin_tensor,
+                num_checkin_tensor,
+                days_stay_tensor,
             ) = batch
-        elif len(batch) == 5:
+        elif len(batch) == 8:
             (
                 city_id_tensor,
                 booker_country_tensor,
                 device_class_tensor,
                 affiliate_id_tensor,
+                month_checkin_tensor,
+                num_checkin_tensor,
+                days_stay_tensor,
                 y,
             ) = batch
         else:
@@ -56,5 +68,8 @@ class CustomRunner(Runner):
             booker_country_tensor,
             device_class_tensor,
             affiliate_id_tensor,
+            month_checkin_tensor,
+            num_checkin_tensor,
+            days_stay_tensor,
         )
         return out
