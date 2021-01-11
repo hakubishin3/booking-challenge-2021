@@ -31,6 +31,7 @@ CATEGORICAL_COLS = [
     "device_class",
     "affiliate_id",
     "month_checkin",
+    "past_hotel_country",
 ]
 NUMERICAL_COLS = [
     "days_stay",
@@ -177,6 +178,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 n_device_class=len(cat_le["device_class"].classes_),
                 n_affiliate_id=len(cat_le["affiliate_id"].classes_),
                 n_month_checkin=len(cat_le["month_checkin"].classes_),
+                n_hotel_country=len(cat_le["past_hotel_country"].classes_),
                 emb_dim=config["params"]["emb_dim"],
                 rnn_dim=config["params"]["rnn_dim"],
                 dropout=config["params"]["dropout"],

@@ -23,6 +23,7 @@ class Dataset(torch.utils.data.Dataset):
         num_checkin_tensor = self.df["num_checkin"].values[index]
         days_stay_tensor = self.df["days_stay"].values[index]
         days_move_tensor = self.df["days_move"].values[index]
+        hotel_country_tensor = self.df["past_hotel_country"].values[index]
 
         if self.is_train:
             return (
@@ -34,6 +35,7 @@ class Dataset(torch.utils.data.Dataset):
                 num_checkin_tensor,
                 days_stay_tensor,
                 days_move_tensor,
+                hotel_country_tensor,
                 target_tensor,
             )
         else:
@@ -46,6 +48,7 @@ class Dataset(torch.utils.data.Dataset):
                 num_checkin_tensor,
                 days_stay_tensor,
                 days_move_tensor,
+                hotel_country_tensor,
             )
 
 
@@ -62,6 +65,7 @@ class Collator(object):
         num_checkin_tensor = [item[5] for item in batch]
         days_stay_tensor = [item[6] for item in batch]
         days_move_tensor = [item[7] for item in batch]
+        hotel_country_tensor = [item[8] for item in batch]
         if self.is_train:
             targets = [item[-1] for item in batch]
 
@@ -84,6 +88,7 @@ class Collator(object):
         days_move_tensor = _pad_sequences(
             days_move_tensor, max(lens), dtype=torch.float
         )
+        hotel_country_tensor = _pad_sequences(hotel_country_tensor, max(lens))
         if self.is_train:
             targets = _pad_sequences(targets, max(lens))
             return (
@@ -95,6 +100,7 @@ class Collator(object):
                 num_checkin_tensor,
                 days_stay_tensor,
                 days_move_tensor,
+                hotel_country_tensor,
                 targets,
             )
 
@@ -107,4 +113,5 @@ class Collator(object):
             num_checkin_tensor,
             days_stay_tensor,
             days_move_tensor,
+            hotel_country_tensor,
         )
