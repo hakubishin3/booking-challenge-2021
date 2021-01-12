@@ -85,12 +85,13 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             .rank()
             .apply(lambda x: np.log10(x))
         )
-        train_test_set["past_checkout"] = train_test_set.groupby("utrip_id")["checkout"].shift(1)
-        train_test_set["days_move"] = (train_test_set["checkin"] - train_test_set["past_checkout"]).dt.days.fillna(0).apply(lambda x: np.log1p(x))
-
-        # 前回のcity_idが0であるレコードを除外する(初回の旅行を除外)
-        train_test_set = train_test_set.query("past_city_id != 0").reset_index(
-            drop=True
+        train_test_set["past_checkout"] = train_test_set.groupby("utrip_id")[
+            "checkout"
+        ].shift(1)
+        train_test_set["days_move"] = (
+            (train_test_set["checkin"] - train_test_set["past_checkout"])
+            .dt.days.fillna(0)
+            .apply(lambda x: np.log1p(x))
         )
 
         log("Encode of categorical values.")

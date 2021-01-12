@@ -109,7 +109,5 @@ class BookingLSTM(nn.Module):
 
         out_s, _ = self.lstm(out_s)
         out_s = out_s[:, -1, :]  # extrast last value of sequence
-        out_s = self.ffn(
-            out_s
-        )
+        out_s = self.ffn(out_s)
         return out_s

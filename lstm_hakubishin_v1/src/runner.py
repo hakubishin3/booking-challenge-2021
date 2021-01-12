@@ -30,9 +30,7 @@ class CustomRunner(Runner):
             hotel_country_tensor,
         )
         loss = self.criterion(out, y)
-        accuracy01, accuracy04 = metrics.accuracy(
-            out, y, topk=(1, 4)
-        )
+        accuracy01, accuracy04 = metrics.accuracy(out, y, topk=(1, 4))
         self.batch_metrics.update(
             {"loss": loss, "accuracy01": accuracy01, "accuracy04": accuracy04}
         )
