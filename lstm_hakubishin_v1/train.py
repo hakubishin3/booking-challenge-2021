@@ -114,8 +114,8 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         x_test = pd.concat(x_test, axis=1)
 
         x_train["n_trips"] = x_train["city_id"].map(
-            lambda x: len(x) + 1
-        )  # 前回のcity_idが0であるレコードを除外するので, その分で + 1している
+            lambda x: len(x)
+        )
         x_train = (
             x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
         )
