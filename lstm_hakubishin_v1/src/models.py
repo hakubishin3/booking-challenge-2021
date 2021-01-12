@@ -108,7 +108,8 @@ class BookingLSTM(nn.Module):
         out_s = torch.cat([cate_emb, cont_emb], dim=2)
 
         out_s, _ = self.lstm(out_s)
+        out_s = out_s[:, -1, :]  # extrast last value of sequence
         out_s = self.ffn(
-            out_s.contiguous().view(out_s.size(0) * out_s.size(1), out_s.size(2))
+            out_s
         )
         return out_s

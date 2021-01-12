@@ -18,7 +18,7 @@ class Dataset(torch.utils.data.Dataset):
         booker_country_tensor = self.df["booker_country"].values[index]
         device_class_tensor = self.df["device_class"].values[index]
         affiliate_id_tensor = self.df["affiliate_id"].values[index]
-        target_tensor = self.df["city_id"].values[index]
+        target_tensor = self.df["city_id"].values[index][-1]   # extrast last value of sequence
         month_checkin_tensor = self.df["month_checkin"].values[index]
         num_checkin_tensor = self.df["num_checkin"].values[index]
         days_stay_tensor = self.df["days_stay"].values[index]
@@ -90,7 +90,7 @@ class Collator(object):
         )
         hotel_country_tensor = _pad_sequences(hotel_country_tensor, max(lens))
         if self.is_train:
-            targets = _pad_sequences(targets, max(lens))
+            targets = torch.tensor(targets, dtype=torch.long)
             return (
                 city_id_tensor,
                 booker_country_tensor,

@@ -29,9 +29,9 @@ class CustomRunner(Runner):
             days_move_tensor,
             hotel_country_tensor,
         )
-        loss = self.criterion(out, y.view(y.size(0) * y.size(1)))
+        loss = self.criterion(out, y)
         accuracy01, accuracy04 = metrics.accuracy(
-            out, y.view(y.size(0) * y.size(1)), topk=(1, 4)
+            out, y, topk=(1, 4)
         )
         self.batch_metrics.update(
             {"loss": loss, "accuracy01": accuracy01, "accuracy04": accuracy04}
