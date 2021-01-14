@@ -17,6 +17,7 @@ from src.utils import seed_everything
 from src.dataset import Dataset, Collator
 from src.models import BookingLSTM
 from src.runner import CustomRunner
+from src.losses import FocalLossWithOutOneHot
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -50,77 +51,79 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         log(f"{train_test_set.shape}")
 
     with span("Preprocessing:"):
-        log("Shift target values for input sequence.")
-        unk_city_id = 0
-        train_test_set["past_city_id"] = (
-            train_test_set.groupby("utrip_id")["city_id"]
-            .shift(1)
-            .fillna(unk_city_id)
-            .astype(int)
-        )
-        unk_hotel_country = "UNK"
-        train_test_set["past_hotel_country"] = (
-            train_test_set.groupby("utrip_id")["hotel_country"]
-            .shift(1)
-            .fillna(unk_hotel_country)
-            .astype(str)
-        )
-
-        log("Encode of target values.")
-        target_le = preprocessing.LabelEncoder()
-        train_test_set["city_id"] = target_le.fit_transform(train_test_set["city_id"])
-        train_test_set["past_city_id"] = target_le.transform(
-            train_test_set["past_city_id"]
-        )
-
-        log("Add features.")
-        train_test_set["checkin"] = pd.to_datetime(train_test_set["checkin"])
-        train_test_set["checkout"] = pd.to_datetime(train_test_set["checkout"])
-        train_test_set["month_checkin"] = train_test_set["checkin"].dt.month
-        train_test_set["days_stay"] = (
-            train_test_set["checkout"] - train_test_set["checkin"]
-        ).dt.days.apply(lambda x: np.log10(x))
-        train_test_set["num_checkin"] = (
-            train_test_set.groupby("utrip_id")["checkin"]
-            .rank()
-            .apply(lambda x: np.log10(x))
-        )
-        train_test_set["past_checkout"] = train_test_set.groupby("utrip_id")[
-            "checkout"
-        ].shift(1)
-        train_test_set["days_move"] = (
-            (train_test_set["checkin"] - train_test_set["past_checkout"])
-            .dt.days.fillna(0)
-            .apply(lambda x: np.log1p(x))
-        )
-
-        log("Encode of categorical values.")
-        cat_le = {}
-        for c in CATEGORICAL_COLS:
-            le = preprocessing.LabelEncoder()
-            train_test_set[c] = le.fit_transform(
-                train_test_set[c].fillna("UNK").astype(str).values
+        with span("Shift target values for input sequence."):
+            unk_city_id = 0
+            train_test_set["past_city_id"] = (
+                train_test_set.groupby("utrip_id")["city_id"]
+                .shift(1)
+                .fillna(unk_city_id)
+                .astype(int)
             )
-            cat_le[c] = le
+            unk_hotel_country = "UNK"
+            train_test_set["past_hotel_country"] = (
+                train_test_set.groupby("utrip_id")["hotel_country"]
+                .shift(1)
+                .fillna(unk_hotel_country)
+                .astype(str)
+            )
+
+        with span("Encode of target values."):
+            target_le = preprocessing.LabelEncoder()
+            train_test_set["city_id"] = target_le.fit_transform(train_test_set["city_id"])
+            train_test_set["past_city_id"] = target_le.transform(
+                train_test_set["past_city_id"]
+            )
+
+        with span("Add features."):
+            train_test_set["checkin"] = pd.to_datetime(train_test_set["checkin"])
+            train_test_set["checkout"] = pd.to_datetime(train_test_set["checkout"])
+            train_test_set["month_checkin"] = train_test_set["checkin"].dt.month
+            train_test_set["days_stay"] = (
+                train_test_set["checkout"] - train_test_set["checkin"]
+            ).dt.days.apply(lambda x: np.log10(x))
+            train_test_set["num_checkin"] = (
+                train_test_set.groupby("utrip_id")["checkin"]
+                .rank()
+                .apply(lambda x: np.log10(x))
+            )
+            train_test_set["past_checkout"] = train_test_set.groupby("utrip_id")[
+                "checkout"
+            ].shift(1)
+            train_test_set["days_move"] = (
+                (train_test_set["checkin"] - train_test_set["past_checkout"])
+                .dt.days.fillna(0)
+                .apply(lambda x: np.log1p(x))
+            )
+
+        with span("Encode of categorical values."):
+            cat_le = {}
+            for c in CATEGORICAL_COLS:
+                le = preprocessing.LabelEncoder()
+                train_test_set[c] = le.fit_transform(
+                    train_test_set[c].fillna("UNK").astype(str).values
+                )
+                cat_le[c] = le
 
         train = train_test_set[train_test_set["row_num"].isnull()]
         test = train_test_set[~train_test_set["row_num"].isnull()]
 
-        x_train, x_test = [], []
-        for c in ["city_id", "past_city_id"] + CATEGORICAL_COLS + NUMERICAL_COLS:
-            x_train.append(train.groupby("utrip_id")[c].apply(list))
-            x_test.append(test.groupby("utrip_id")[c].apply(list))
-        x_train = pd.concat(x_train, axis=1)
-        x_test = pd.concat(x_test, axis=1)
+        with span("aggregate features by utrip_id"):
+            x_train, x_test = [], []
+            for c in ["city_id", "past_city_id"] + CATEGORICAL_COLS + NUMERICAL_COLS:
+                x_train.append(train.groupby("utrip_id")[c].apply(list))
+                x_test.append(test.groupby("utrip_id")[c].apply(list))
+            x_train = pd.concat(x_train, axis=1)
+            x_test = pd.concat(x_test, axis=1)
 
-        x_train["n_trips"] = x_train["city_id"].map(
-            lambda x: len(x)
-        )
-        x_train = (
-            x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
-        )
-        x_test = x_test.reset_index(drop=True)
-        log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
+        with span("sampling training data"):
+            x_train["n_trips"] = x_train["city_id"].map(
+                lambda x: len(x)
+            )
+            x_train = (
+                x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
+            )
+            x_test = x_test.reset_index(drop=True)
+            log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
 
         if debug:
             log("'--debug' specified. Shrink data size into 1000.")
@@ -188,7 +191,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             if i_fold == 0:
                 log(f"{summary(model)}")
 
-            criterion = torch.nn.CrossEntropyLoss()
+            criterion = FocalLossWithOutOneHot(gamma=0.5)
             # Prepare optimizer
             param_optimizer = list(model.named_parameters())
             no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -227,6 +230,8 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 optimizer=optimizer,
                 scheduler=scheduler,
                 loaders=loaders,
+                main_metric="accuracy04",
+                minimize_metric=False,
                 logdir=logdir,
                 num_epochs=config["params"]["num_epochs"],
                 verbose=True,
