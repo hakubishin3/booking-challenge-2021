@@ -252,7 +252,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 verbose=True,
             )
 
-            log("Predictions of validation data")
+            log("Predictions using validation data")
             val_preds = np.array(
                 list(
                     map(
@@ -271,6 +271,12 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 y_val, val_preds, k=4, labels=np.arange(len(target_le.classes_))
             )
             log(f"val acc@4: {score}")
+            np.save(
+                Path(config["output_dir_path"])
+                / config["exp_name"]
+                / f"y_val_pred_fold{i_fold}",
+                val_preds,
+            )
 
             test_preds_ = np.array(
                 list(
@@ -301,11 +307,11 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
 
     log("Save files:")
     np.save(
-        Path(config["output_dir_path"]) / config["exp_name"] / f"y_oof_pred_fold",
+        Path(config["output_dir_path"]) / config["exp_name"] / f"y_oof_pred",
         oof_preds,
     )
     np.save(
-        Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold",
+        Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred",
         test_preds,
     )
 
