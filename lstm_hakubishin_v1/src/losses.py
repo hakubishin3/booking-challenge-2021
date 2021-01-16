@@ -12,11 +12,13 @@ class FocalLossWithOutOneHot(nn.Module):
 
     def forward(self, input, target):
         logit = F.softmax(input, dim=1)
-        logit = logit.clamp(self.eps, 1. - self.eps)
+        logit = logit.clamp(self.eps, 1.0 - self.eps)
         logit_ls = torch.log(logit)
         loss = F.nll_loss(logit_ls, target, reduction="none")
         view = target.size() + (1,)
         index = target.view(*view)
-        loss = loss * (1 - logit.gather(1, index).squeeze(1)) ** self.gamma # focal loss
+        loss = (
+            loss * (1 - logit.gather(1, index).squeeze(1)) ** self.gamma
+        )  # focal loss
 
         return loss.sum()
