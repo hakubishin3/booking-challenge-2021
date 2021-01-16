@@ -11,6 +11,7 @@ from sklearn.model_selection import StratifiedKFold
 from torchsummary import summary
 from transformers import AdamW, get_linear_schedule_with_warmup
 from typing import Dict, Type
+from sklearn.metrics import top_k_accuracy_score
 
 from src import log, set_out, span, load_train_test_set
 from src.utils import seed_everything
@@ -69,7 +70,9 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
 
         with span("Encode of target values."):
             target_le = preprocessing.LabelEncoder()
-            train_test_set["city_id"] = target_le.fit_transform(train_test_set["city_id"])
+            train_test_set["city_id"] = target_le.fit_transform(
+                train_test_set["city_id"]
+            )
             train_test_set["past_city_id"] = target_le.transform(
                 train_test_set["past_city_id"]
             )
@@ -125,11 +128,11 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             x_test = pd.concat(x_test, axis=1)
 
         with span("sampling training data"):
-            x_train["n_trips"] = x_train["city_id"].map(
-                lambda x: len(x)
-            )
+            x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x))
             x_train = (
-                x_train.query("n_trips > 2").sort_values("n_trips").reset_index(drop=True)
+                x_train.query("n_trips > 2")
+                .sort_values("n_trips")
+                .reset_index(drop=True)
             )
             x_test = x_test.reset_index(drop=True)
             log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
@@ -137,7 +140,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         if debug:
             log("'--debug' specified. Shrink data size into 1000.")
             x_train = x_train.iloc[:1000]
-            x_test = x_test.iloc[:1000]
+            # x_test = x_test.iloc[:1000]
             config["params"]["num_epochs"] = 2
             log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
 
@@ -145,7 +148,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         test_dataset = Dataset(x_test, is_train=False)
         test_dataloader = torch.utils.data.DataLoader(
             test_dataset,
-            batch_size=config["params"]["bacth_size"],
+            batch_size=1,
             num_workers=os.cpu_count(),
             pin_memory=True,
             collate_fn=Collator(is_train=False),
@@ -160,6 +163,9 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         folds = cv.split(x_train, pd.cut(x_train["n_trips"], 5, labels=False))
 
     log("Training:")
+    oof_preds = np.zeros((len(x_train), len(target_le.classes_)), dtype=np.float32)
+    test_preds = np.zeros((len(x_test), len(target_le.classes_)), dtype=np.float32)
+
     for i_fold, (trn_idx, val_idx) in enumerate(folds):
         if holdout and i_fold > 0:
             break
@@ -246,25 +252,27 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 verbose=True,
             )
 
-            score = 0
+            log("Predictions of validation data")
+            val_preds = np.array(
+                list(
+                    map(
+                        lambda x: x.cpu().numpy()[-1, :],
+                        runner.predict_loader(
+                            loader=valid_dataloader,
+                            resume=f"{logdir}/checkpoints/best.pth",
+                            model=model,
+                        ),
+                    )
+                )
+            )
+            oof_preds[val_idx, :] = val_preds
             y_val = x_val["city_id"].map(lambda x: x[-1])
-            for loop_i, prediction in enumerate(
-                runner.predict_loader(
-                    loader=valid_dataloader,
-                    resume=f"{logdir}/checkpoints/best.pth",
-                    model=model,
-                )
-            ):
-                correct = (
-                    y_val.values[loop_i]
-                    in np.argsort(prediction.cpu().numpy()[-1, :])[-4:]
-                )
-                score += int(correct)
-            score /= len(y_val)
+            score = top_k_accuracy_score(
+                y_val, val_preds, k=4, labels=np.arange(len(target_le.classes_))
+            )
             log(f"val acc@4: {score}")
 
-            """
-            pred = np.array(
+            test_preds_ = np.array(
                 list(
                     map(
                         lambda x: x.cpu().numpy()[-1, :],
@@ -276,9 +284,30 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                     )
                 )
             )
-            print(pred.shape)
-            np.save(Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold{i_fold}", pred)
-            """
+            test_preds += test_preds_ / cv.n_splits
+            np.save(
+                Path(config["output_dir_path"])
+                / config["exp_name"]
+                / f"y_test_pred_fold{i_fold}",
+                test_preds_,
+            )
+
+    log("Evaluation OOF valies:")
+    y_train = x_train["city_id"].map(lambda x: x[-1])
+    score = top_k_accuracy_score(
+        y_train, oof_preds, k=4, labels=np.arange(len(target_le.classes_))
+    )
+    log(f"oof acc@4: {score}")
+
+    log("Save files:")
+    np.save(
+        Path(config["output_dir_path"]) / config["exp_name"] / f"y_oof_pred_fold",
+        oof_preds,
+    )
+    np.save(
+        Path(config["output_dir_path"]) / config["exp_name"] / f"y_test_pred_fold",
+        test_preds,
+    )
 
 
 def main():
