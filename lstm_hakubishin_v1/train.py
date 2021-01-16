@@ -75,17 +75,26 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             )
 
         with span("Add features."):
+            log("Convert data type of checkin and checkout.")
             train_test_set["checkin"] = pd.to_datetime(train_test_set["checkin"])
             train_test_set["checkout"] = pd.to_datetime(train_test_set["checkout"])
+
+            log("Create month_checkin feature.")
             train_test_set["month_checkin"] = train_test_set["checkin"].dt.month
+
+            log("Create days_stay feature.")
             train_test_set["days_stay"] = (
                 train_test_set["checkout"] - train_test_set["checkin"]
             ).dt.days.apply(lambda x: np.log10(x))
+
+            log("Create num_checkin feature.")
             train_test_set["num_checkin"] = (
                 train_test_set.groupby("utrip_id")["checkin"]
                 .rank()
                 .apply(lambda x: np.log10(x))
             )
+
+            log("Create days_move feature.")
             train_test_set["past_checkout"] = train_test_set.groupby("utrip_id")[
                 "checkout"
             ].shift(1)
