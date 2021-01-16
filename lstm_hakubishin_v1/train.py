@@ -140,7 +140,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         if debug:
             log("'--debug' specified. Shrink data size into 1000.")
             x_train = x_train.iloc[:1000]
-            # x_test = x_test.iloc[:1000]
+            x_test = x_test.iloc[:1000]
             config["params"]["num_epochs"] = 2
             log(f"x_train: {x_train.shape}, x_test: {x_test.shape}")
 
@@ -253,7 +253,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             )
 
             log("Predictions using validation data")
-            val_preds = np.array(
+            oof_preds[val_idx, :] = np.array(
                 list(
                     map(
                         lambda x: x.cpu().numpy()[-1, :],
@@ -265,17 +265,16 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                     )
                 )
             )
-            oof_preds[val_idx, :] = val_preds
             y_val = x_val["city_id"].map(lambda x: x[-1])
             score = top_k_accuracy_score(
-                y_val, val_preds, k=4, labels=np.arange(len(target_le.classes_))
+                y_val, oof_preds[val_idx, :], k=4, labels=np.arange(len(target_le.classes_))
             )
             log(f"val acc@4: {score}")
             np.save(
                 Path(config["output_dir_path"])
                 / config["exp_name"]
                 / f"y_val_pred_fold{i_fold}",
-                val_preds,
+                oof_preds[val_idx, :],
             )
 
             test_preds_ = np.array(
