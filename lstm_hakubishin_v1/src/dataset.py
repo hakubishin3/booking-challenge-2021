@@ -27,31 +27,24 @@ class Dataset(torch.utils.data.Dataset):
         days_move_tensor = self.df["days_move"].values[index]
         hotel_country_tensor = self.df["past_hotel_country"].values[index]
 
+        input_tensors = (
+            city_id_tensor,
+            booker_country_tensor,
+            device_class_tensor,
+            affiliate_id_tensor,
+            month_checkin_tensor,
+            num_checkin_tensor,
+            days_stay_tensor,
+            days_move_tensor,
+            hotel_country_tensor,
+        )
+        target_tensors = (
+            target_tensor,
+        )
         if self.is_train:
-            return (
-                city_id_tensor,
-                booker_country_tensor,
-                device_class_tensor,
-                affiliate_id_tensor,
-                month_checkin_tensor,
-                num_checkin_tensor,
-                days_stay_tensor,
-                days_move_tensor,
-                hotel_country_tensor,
-                target_tensor,
-            )
+            return input_tensors + target_tensors
         else:
-            return (
-                city_id_tensor,
-                booker_country_tensor,
-                device_class_tensor,
-                affiliate_id_tensor,
-                month_checkin_tensor,
-                num_checkin_tensor,
-                days_stay_tensor,
-                days_move_tensor,
-                hotel_country_tensor,
-            )
+            return input_tensors
 
 
 class Collator(object):
@@ -91,22 +84,8 @@ class Collator(object):
             days_move_tensor, max(lens), dtype=torch.float
         )
         hotel_country_tensor = _pad_sequences(hotel_country_tensor, max(lens))
-        if self.is_train:
-            targets = torch.tensor(targets, dtype=torch.long)
-            return (
-                city_id_tensor,
-                booker_country_tensor,
-                device_class_tensor,
-                affiliate_id_tensor,
-                month_checkin_tensor,
-                num_checkin_tensor,
-                days_stay_tensor,
-                days_move_tensor,
-                hotel_country_tensor,
-                targets,
-            )
 
-        return (
+        input_tensors = (
             city_id_tensor,
             booker_country_tensor,
             device_class_tensor,
@@ -117,3 +96,8 @@ class Collator(object):
             days_move_tensor,
             hotel_country_tensor,
         )
+        if self.is_train:
+            targets = torch.tensor(targets, dtype=torch.long)
+            return input_tensors + (targets,)
+
+        return input_tensors
