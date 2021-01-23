@@ -1,0 +1,34 @@
+description: ModelGBDT
+exp_name: "gbdt001"
+input_dir_path: "./data/input/"
+output_dir_path: "./data/output/"
+feature_dir_path: "./data/features/"
+model_name: "ModelLightGBM"
+features: [
+  "LabelEncoding",
+  "NumericalFeature",
+]
+seed: 71
+fold:
+  shuffle: False
+  n_splits: 5
+params:
+  model_params:
+    boosting_type: "gbdt"
+    objective: "multiclass"
+    metric: "multi_logloss"
+    num_class: -1
+    learning_rate": 0.05
+    num_leaves": 100
+    subsample": 1.0
+    colsample_bytree": 0.6
+    n_estimators": 1000
+    seed": 71
+    bagging_seed": 71
+    feature_fraction_seed": 71
+    drop_seed": 71
+    random_state": 71
+    verbose": -1
+  train_params:
+    early_stopping_rounds: 100
+    verbose: 100

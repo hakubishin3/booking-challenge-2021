@@ -4,6 +4,84 @@ import datetime
 import contextlib
 import pandas as pd
 from pathlib import Path
+from sklearn import preprocessing
+
+
+CATEGORICAL_COLS = [
+    "booker_country",
+    "device_class",
+    "affiliate_id",
+    "month_checkin",
+    "past_hotel_country",
+]
+
+def preprocess_train_test_set(train_test_set: pd.DataFrame) -> pd.DataFrame:
+    # Shift target values for input sequence.
+    unk_city_id = 0
+    train_test_set["past_city_id"] = (
+        train_test_set.groupby("utrip_id")["city_id"]
+        .shift(1)
+        .fillna(unk_city_id)
+        .astype(int)
+    )
+
+    unk_hotel_country = "UNK"
+    train_test_set["past_hotel_country"] = (
+        train_test_set.groupby("utrip_id")["hotel_country"]
+        .shift(1)
+        .fillna(unk_hotel_country)
+        .astype(str)
+    )
+
+    # Encode of target values.
+    target_le = preprocessing.LabelEncoder()
+    train_test_set["city_id"] = target_le.fit_transform(
+        train_test_set["city_id"]
+    )
+    train_test_set["past_city_id"] = target_le.transform(
+        train_test_set["past_city_id"]
+    )
+
+    # Change data type
+    train_test_set["checkin"] = pd.to_datetime(train_test_set["checkin"])
+    train_test_set["checkout"] = pd.to_datetime(train_test_set["checkout"])
+
+    # Add checkin features
+    train_test_set["month_checkin"] = train_test_set["checkin"].dt.month
+    train_test_set["year_checkin"] = train_test_set["checkin"].dt.year
+
+    # Create days_stay feature.
+    train_test_set["days_stay"] = (
+        train_test_set["checkout"] - train_test_set["checkin"]
+    ).dt.days
+
+    # Create num_checkin feature.
+    train_test_set["num_checkin"] = (
+        train_test_set.groupby("utrip_id")["checkin"]
+        .rank()
+    )
+
+    # Create days_move feature.
+    train_test_set["past_checkout"] = train_test_set.groupby("utrip_id")[
+        "checkout"
+    ].shift(1)
+    train_test_set["days_move"] = (
+        (train_test_set["checkin"] - train_test_set["past_checkout"])
+        .dt.days.fillna(0)
+    )
+
+    # Encode of categorical values.
+    cat_le = {}
+    for c in CATEGORICAL_COLS:
+        le = preprocessing.LabelEncoder()
+        train_test_set[c] = le.fit_transform(
+            train_test_set[c].fillna("UNK").astype(str).values
+        )
+        cat_le[c] = le
+
+    train_test_set["is_last"] = (train_test_set.groupby("utrip_id")["checkin"].rank(ascending=False) == 1).astype(int)
+
+    return train_test_set, target_le, cat_le
 
 
 def load_train_test_set(config: dict) -> pd.DataFrame:
