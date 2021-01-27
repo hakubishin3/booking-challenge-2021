@@ -39,6 +39,10 @@ NUMERICAL_COLS = [
     "days_stay",
     "num_checkin",
     "days_move",
+    "num_visit_drop_duplicates",
+    "num_visit",
+    "num_visit_same_city",
+    "num_stay_consecutively",
 ]
 
 
@@ -84,6 +88,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
 
             log("Create month_checkin feature.")
             train_test_set["month_checkin"] = train_test_set["checkin"].dt.month
+            train_test_set["year_checkin"] = train_test_set["checkin"].dt.year
 
             log("Create days_stay feature.")
             train_test_set["days_stay"] = (
@@ -107,6 +112,33 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 .apply(lambda x: np.log1p(x))
             )
 
+            log("Create aggregation features.")
+            num_visit_drop_duplicates = train_test_set.query("city_id != 0")[["user_id", "city_id"]].drop_duplicates().groupby("city_id").size().apply(lambda x: np.log1p(x)).reset_index()
+            num_visit_drop_duplicates.columns = ["past_city_id", "num_visit_drop_duplicates"]
+            num_visit = train_test_set.query("city_id != 0")[["user_id", "city_id"]].groupby("city_id").size().apply(lambda x: np.log1p(x)).reset_index()
+            num_visit.columns = ["past_city_id", "num_visit"]
+            num_visit_same_city = train_test_set[train_test_set['city_id'] == train_test_set['city_id'].shift(1)].groupby("city_id").size().apply(lambda x: np.log1p(x)).reset_index()
+            num_visit_same_city.columns = ["past_city_id", "num_visit_same_city"]
+            train_test_set = pd.merge(train_test_set, num_visit_drop_duplicates, on="past_city_id", how="left")
+            train_test_set = pd.merge(train_test_set, num_visit, on="past_city_id", how="left")
+            train_test_set = pd.merge(train_test_set, num_visit_same_city, on="past_city_id", how="left")
+            train_test_set["num_visit_drop_duplicates"].fillna(0, inplace=True)
+            train_test_set["num_visit"].fillna(0, inplace=True)
+            train_test_set["num_visit_same_city"].fillna(0, inplace=True)
+            train_test_set["num_stay_consecutively"] = train_test_set.groupby(["utrip_id", "past_city_id"])["past_city_id"].rank(method="first").fillna(1).apply(lambda x: np.log1p(x))
+
+            log("Create aggregation visit by month.")
+            """
+            mat = train_test_set.query("year_checkin == 2016").groupby(["hotel_country", "month_checkin"]).size().rename("cnt").unstack().fillna(0)
+            mat = mat.div(mat.sum(axis=1), axis=0)
+            country_visit_by_month_columns = [f"country_visit_by_month_{i}" for i in mat.columns]
+            mat.columns = country_visit_by_month_columns
+            mat = mat.reset_index()
+            mat = mat.rename(columns={"hotel_country": "past_hotel_country"})
+            import pdb; pdb.set_trace()
+            train_test_set = pd.merge(train_test_set, most_popular_month_by_country, on="past_hotel_country", how="left")
+            """
+
         with span("Encode of categorical values."):
             cat_le = {}
             for c in CATEGORICAL_COLS:
@@ -120,12 +152,14 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         test = train_test_set[~train_test_set["row_num"].isnull()]
 
         with span("aggregate features by utrip_id"):
-            x_train, x_test = [], []
+            x_train, x_test_using_train, x_test = [], [], []
             for c in ["city_id", "past_city_id"] + CATEGORICAL_COLS + NUMERICAL_COLS:
                 x_train.append(train.groupby("utrip_id")[c].apply(list))
                 x_test.append(test.groupby("utrip_id")[c].apply(list))
+                x_test_using_train.append(test.groupby("utrip_id")[c].apply(lambda x: list(x)[:-1]))
             x_train = pd.concat(x_train, axis=1)
             x_test = pd.concat(x_test, axis=1)
+            x_test_using_train = pd.concat(x_test_using_train, axis=1)
 
         with span("sampling training data"):
             x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x))
@@ -172,6 +206,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
         with span(f"Fold = {i_fold}"):
             x_trn = x_train.loc[trn_idx, :]
             x_val = x_train.loc[val_idx, :]
+            x_trn = pd.concat([x_trn, x_test_using_train], axis=0, ignore_index=True)
             train_dataset = Dataset(x_trn, is_train=True)
             valid_dataset = Dataset(x_val, is_train=True)
             train_dataloader = torch.utils.data.DataLoader(
@@ -265,7 +300,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                     )
                 )
             )
-            y_val = x_val["city_id"].map(lambda x: x[-1])
+            y_val = x_val["city_id"].map(lambda x: x[-1]).values
             score = top_k_accuracy_score(
                 y_val, oof_preds[val_idx, :], k=4, labels=np.arange(len(target_le.classes_))
             )
