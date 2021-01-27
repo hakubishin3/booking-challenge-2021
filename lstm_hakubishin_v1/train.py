@@ -43,6 +43,7 @@ NUMERICAL_COLS = [
     "num_visit",
     "num_visit_same_city",
     "num_stay_consecutively",
+    "city_embedding",
 ]
 
 
@@ -54,6 +55,10 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
     with span("Load train and test set:"):
         train_test_set = load_train_test_set(config)
         log(f"{train_test_set.shape}")
+        emb_df = pd.read_csv("./data/interim/emb_df.csv")
+        n_emb = emb_df.shape[1] - 1
+        emb_cols = [str(i) for i in range(n_emb)]
+        emb_df.rename(columns={"city_id": "past_city_id"}, inplace=True)
 
     with span("Preprocessing:"):
         with span("Shift target values for input sequence."):
@@ -71,6 +76,9 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 .fillna(unk_hotel_country)
                 .astype(str)
             )
+            train_test_set = pd.merge(train_test_set, emb_df, on="past_city_id", how="left")
+            train_test_set[emb_cols] = train_test_set[emb_cols].fillna(0)
+            train_test_set["city_embedding"] = train_test_set[emb_cols].apply(lambda x: list(x), axis=1)
 
         with span("Encode of target values."):
             target_le = preprocessing.LabelEncoder()
@@ -127,18 +135,6 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             train_test_set["num_visit_same_city"].fillna(0, inplace=True)
             train_test_set["num_stay_consecutively"] = train_test_set.groupby(["utrip_id", "past_city_id"])["past_city_id"].rank(method="first").fillna(1).apply(lambda x: np.log1p(x))
 
-            log("Create aggregation visit by month.")
-            """
-            mat = train_test_set.query("year_checkin == 2016").groupby(["hotel_country", "month_checkin"]).size().rename("cnt").unstack().fillna(0)
-            mat = mat.div(mat.sum(axis=1), axis=0)
-            country_visit_by_month_columns = [f"country_visit_by_month_{i}" for i in mat.columns]
-            mat.columns = country_visit_by_month_columns
-            mat = mat.reset_index()
-            mat = mat.rename(columns={"hotel_country": "past_hotel_country"})
-            import pdb; pdb.set_trace()
-            train_test_set = pd.merge(train_test_set, most_popular_month_by_country, on="past_hotel_country", how="left")
-            """
-
         with span("Encode of categorical values."):
             cat_le = {}
             for c in CATEGORICAL_COLS:
@@ -163,8 +159,14 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
 
         with span("sampling training data"):
             x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x))
+            x_test_using_train["n_trips"] = x_test_using_train["city_id"].map(lambda x: len(x))            
             x_train = (
                 x_train.query("n_trips > 2")
+                .sort_values("n_trips")
+                .reset_index(drop=True)
+            )
+            x_test_using_train = (
+                x_test_using_train
                 .sort_values("n_trips")
                 .reset_index(drop=True)
             )
