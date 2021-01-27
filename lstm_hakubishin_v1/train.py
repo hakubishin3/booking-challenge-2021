@@ -143,15 +143,17 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             num_visit_to_past_city.columns = ["past_city_id", "num_past_city_id"]
             num_past_to_current_city = pd.merge(num_past_to_current_city, num_visit_to_past_city, on=["past_city_id"])
             num_past_to_current_city = num_past_to_current_city.set_index(["past_city_id", "city_id"])
-            top1000_city_id = train_test_set.groupby("city_id").count().rank(ascending=False).query("user_id <= 1000").index
+            top2000_city_id = train_test_set.groupby("city_id").count().rank(ascending=False).query("user_id <= 2000").index
             transition = pd.DataFrame(train_test_set["past_city_id"].unique(), columns=["past_city_id"])
             past_city_to_cols = []
             transition_idx = num_past_to_current_city.index
-            for c_i in top1000_city_id[:100]:
+            for c_i in top2000_city_id:
                 if c_i == 0:
                     continue
                 past_city_to_cols.append("num_past_city_to_{}".format(c_i))
                 transition["num_past_city_to_{}".format(c_i)] = transition["past_city_id"].apply(lambda x: np.log1p(num_past_to_current_city.at[(x, c_i), "num_transition"]) if x != 0 and (x, c_i) in transition_idx else 0)
+                if len(past_city_to_cols) == 1000:
+                    break
             transition["num_past_city_to_embedding"] = transition[past_city_to_cols].apply(lambda x: list(x), axis=1)
             train_test_set = pd.merge(train_test_set, transition[["past_city_id", "num_past_city_to_embedding"]], on="past_city_id", how="left")
 
