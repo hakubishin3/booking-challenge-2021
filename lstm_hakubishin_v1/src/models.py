@@ -28,8 +28,8 @@ class BookingLSTM(nn.Module):
         self.hotel_country_embedding = nn.Embedding(n_hotel_country, emb_dim)
 
         self.cate_proj = nn.Sequential(
-            nn.Linear(emb_dim * 6, hidden_size // 2),
-            nn.LayerNorm(hidden_size // 2),
+            nn.Linear(emb_dim * 6, hidden_size // 4),
+            nn.LayerNorm(hidden_size // 4),
         )
         self.cont_emb = nn.Sequential(
             nn.Linear(7, hidden_size // 4),
