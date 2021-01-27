@@ -40,7 +40,7 @@ class BookingLSTM(nn.Module):
             nn.LayerNorm(hidden_size // 4),
         )
 
-        self.num_past_city_to_current_city_emb = nn.Sequential(
+        self.num_past_city_to_emb = nn.Sequential(
             nn.Linear(1000, hidden_size // 4),
             nn.LayerNorm(hidden_size // 4),
         )
@@ -85,7 +85,7 @@ class BookingLSTM(nn.Module):
         num_visit_same_city_tensor,
         num_stay_consecutively_tensor,
         city_embedding_tensor,
-        num_past_city_to_current_city_embedding_tensor,
+        num_past_city_to_embedding_tensor,
     ):
         city_id_embedding = self.city_id_embedding(city_id_tensor)
         booker_country_embedding = self.booker_country_embedding(booker_country_tensor)
@@ -128,10 +128,9 @@ class BookingLSTM(nn.Module):
         )
         cont_emb = self.cont_emb(cont_emb)
         city_emb = self.city_emb(city_embedding_tensor)
-        num_past_city_to_current_city_emb = self.num_past_city_to_current_city_emb(num_past_city_to_current_city_embedding_tensor)
+        num_past_city_to_emb = self.num_past_city_to_emb(num_past_city_to_embedding_tensor)
 
-
-        out_s = torch.cat([cate_emb, cont_emb, city_emb, num_past_city_to_current_city_emb], dim=2)
+        out_s = torch.cat([cate_emb, cont_emb, city_emb, num_past_city_to_emb], dim=2)
 
         out_s, _ = self.lstm(out_s)
         out_s = out_s[:, -1, :]  # extrast last value of sequence
