@@ -1,0 +1,16 @@
+description: ModelNN
+exp_name: "lstm_using_test_data"
+input_dir_path: "./data/input/"
+output_dir_path: "./data/output/"
+model_name: "BookingLSTM"
+seed: 71
+fold:
+  shuffle: False
+  n_splits: 5
+params:
+  num_epochs: 15
+  bacth_size: 32
+  emb_dim: 512
+  rnn_dim: 512
+  dropout: 0.3
+  rnn_dropout: 0.3
