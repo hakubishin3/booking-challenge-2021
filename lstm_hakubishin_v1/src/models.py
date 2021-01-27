@@ -32,8 +32,12 @@ class BookingLSTM(nn.Module):
             nn.LayerNorm(hidden_size // 2),
         )
         self.cont_emb = nn.Sequential(
-            nn.Linear(3, hidden_size // 2),
-            nn.LayerNorm(hidden_size // 2),
+            nn.Linear(7, hidden_size // 4),
+            nn.LayerNorm(hidden_size // 4),
+        )
+        self.city_emb = nn.Sequential(
+            nn.Linear(400, hidden_size // 4),
+            nn.LayerNorm(hidden_size // 4),
         )
 
         self.lstm = nn.LSTM(
@@ -71,6 +75,11 @@ class BookingLSTM(nn.Module):
         days_stay_tensor,
         days_move_tensor,
         hotel_country_tensor,
+        num_visit_drop_duplicates_tensor,
+        num_visit_tensor,
+        num_visit_same_city_tensor,
+        num_stay_consecutively_tensor,
+        city_embedding_tensor,
     ):
         city_id_embedding = self.city_id_embedding(city_id_tensor)
         booker_country_embedding = self.booker_country_embedding(booker_country_tensor)
@@ -81,6 +90,10 @@ class BookingLSTM(nn.Module):
         num_checkin_feature = num_checkin_tensor.unsqueeze(2)
         days_stay_feature = days_stay_tensor.unsqueeze(2)
         days_move_feature = days_move_tensor.unsqueeze(2)
+        num_visit_drop_duplicates_feature = num_visit_drop_duplicates_tensor.unsqueeze(2)
+        num_visit_feature = num_visit_tensor.unsqueeze(2)
+        num_visit_same_city_feature = num_visit_same_city_tensor.unsqueeze(2)
+        num_stay_consecutively_feature = num_stay_consecutively_tensor.unsqueeze(2)
 
         cate_emb = torch.cat(
             [
@@ -100,12 +113,17 @@ class BookingLSTM(nn.Module):
                 num_checkin_feature,
                 days_stay_feature,
                 days_move_feature,
+                num_visit_drop_duplicates_feature,
+                num_visit_feature,
+                num_visit_same_city_feature,
+                num_stay_consecutively_feature,
             ],
             dim=2,
         )
         cont_emb = self.cont_emb(cont_emb)
+        city_emb = self.city_emb(city_embedding_tensor)
 
-        out_s = torch.cat([cate_emb, cont_emb], dim=2)
+        out_s = torch.cat([cate_emb, cont_emb, city_emb], dim=2)
 
         out_s, _ = self.lstm(out_s)
         out_s = out_s[:, -1, :]  # extrast last value of sequence
