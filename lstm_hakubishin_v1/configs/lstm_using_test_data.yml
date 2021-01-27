@@ -9,7 +9,7 @@ fold:
   n_splits: 5
 params:
   num_epochs: 15
-  bacth_size: 32
+  bacth_size: 64
   emb_dim: 512
   rnn_dim: 512
   dropout: 0.3
