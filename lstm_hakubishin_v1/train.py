@@ -44,6 +44,7 @@ NUMERICAL_COLS = [
     "num_visit_same_city",
     "num_stay_consecutively",
     "city_embedding",
+    "num_past_city_to_embedding",
 ]
 
 
@@ -135,6 +136,25 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
             train_test_set["num_visit_same_city"].fillna(0, inplace=True)
             train_test_set["num_stay_consecutively"] = train_test_set.groupby(["utrip_id", "past_city_id"])["past_city_id"].rank(method="first").fillna(1).apply(lambda x: np.log1p(x))
 
+            log("Create past_city to curent_city features.")
+            num_past_to_current_city = train_test_set.groupby(["past_city_id", "city_id"]).count()["user_id"].reset_index()
+            num_past_to_current_city.columns = ["past_city_id", "city_id", "num_transition"]
+            num_visit_to_past_city = num_past_to_current_city.groupby("past_city_id").sum()["num_transition"].reset_index()
+            num_visit_to_past_city.columns = ["past_city_id", "num_past_city_id"]
+            num_past_to_current_city = pd.merge(num_past_to_current_city, num_visit_to_past_city, on=["past_city_id"])
+            num_past_to_current_city = num_past_to_current_city.set_index(["past_city_id", "city_id"])
+            top1000_city_id = train_test_set.groupby("city_id").count().rank(ascending=False).query("user_id <= 1000").index
+            transition = pd.DataFrame(train_test_set["past_city_id"].unique(), columns=["past_city_id"])
+            past_city_to_cols = []
+            transition_idx = num_past_to_current_city.index
+            for c_i in top1000_city_id[:100]:
+                if c_i == 0:
+                    continue
+                past_city_to_cols.append("num_past_city_to_{}".format(c_i))
+                transition["num_past_city_to_{}".format(c_i)] = transition["past_city_id"].apply(lambda x: np.log1p(num_past_to_current_city.at[(x, c_i), "num_transition"]) if x != 0 and (x, c_i) in transition_idx else 0)
+            transition["num_past_city_to_embedding"] = transition[past_city_to_cols].apply(lambda x: list(x), axis=1)
+            train_test_set = pd.merge(train_test_set, transition[["past_city_id", "num_past_city_to_embedding"]], on="past_city_id", how="left")
+
         with span("Encode of categorical values."):
             cat_le = {}
             for c in CATEGORICAL_COLS:
@@ -159,7 +179,7 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
 
         with span("sampling training data"):
             x_train["n_trips"] = x_train["city_id"].map(lambda x: len(x))
-            x_test_using_train["n_trips"] = x_test_using_train["city_id"].map(lambda x: len(x))            
+            x_test_using_train["n_trips"] = x_test_using_train["city_id"].map(lambda x: len(x))
             x_train = (
                 x_train.query("n_trips > 2")
                 .sort_values("n_trips")
