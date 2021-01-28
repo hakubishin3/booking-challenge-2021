@@ -32,6 +32,7 @@ class Dataset(torch.utils.data.Dataset):
         num_stay_consecutively_tensor = self.df["num_stay_consecutively"].values[index]
         city_embedding_tensor = np.asarray(self.df["city_embedding"].values[index])
         num_past_city_to_embedding_tensor = np.asarray(self.df["num_past_city_to_embedding"].values[index])
+        year_checkin_tensor = self.df["year_checkin"].values[index]
 
         input_tensors = (
             city_id_tensor,
@@ -49,6 +50,7 @@ class Dataset(torch.utils.data.Dataset):
             num_stay_consecutively_tensor,
             city_embedding_tensor,
             num_past_city_to_embedding_tensor,
+            year_checkin_tensor
         )
         target_tensors = (
             target_tensor,
@@ -79,6 +81,7 @@ class Collator(object):
         num_stay_consecutively_tensor = [item[12] for item in batch]
         city_embedding_tensor = [item[13] for item in batch]
         num_past_city_to_embedding_tensor = [item[14] for item in batch]
+        year_checkin_tensor = [item[15] for item in batch]
         if self.is_train:
             targets = [item[-1] for item in batch]
 
@@ -92,6 +95,8 @@ class Collator(object):
         device_class_tensor = _pad_sequences(device_class_tensor, max(lens))
         affiliate_id_tensor = _pad_sequences(affiliate_id_tensor, max(lens))
         month_checkin_tensor = _pad_sequences(month_checkin_tensor, max(lens))
+        year_checkin_tensor = _pad_sequences(year_checkin_tensor, max(lens))
+
         num_checkin_tensor = _pad_sequences(
             num_checkin_tensor, max(lens), dtype=torch.float
         )
@@ -137,6 +142,7 @@ class Collator(object):
             num_stay_consecutively_tensor,
             city_embedding_tensor,
             num_past_city_to_embedding_tensor,
+            year_checkin_tensor,
         )
         if self.is_train:
             targets = torch.tensor(targets, dtype=torch.long)

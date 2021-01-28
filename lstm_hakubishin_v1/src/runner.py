@@ -22,9 +22,9 @@ class CustomRunner(Runner):
     @torch.no_grad()
     def predict_batch(self, batch):
         batch = any2device(batch, self.device)
-        if len(batch) == 15:
+        if len(batch) == 16:
             input_tensors = batch
-        elif len(batch) == 16:
+        elif len(batch) == 17:
             input_tensors = batch[:-1]
         else:
             raise RuntimeError

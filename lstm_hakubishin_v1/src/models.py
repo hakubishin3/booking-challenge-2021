@@ -10,6 +10,7 @@ class BookingLSTM(nn.Module):
         n_device_class,
         n_affiliate_id,
         n_month_checkin,
+        n_year_checkin,
         n_hotel_country,
         emb_dim=512,
         rnn_dim=512,
@@ -25,10 +26,11 @@ class BookingLSTM(nn.Module):
         self.device_class_embedding = nn.Embedding(n_device_class, emb_dim)
         self.affiliate_id_embedding = nn.Embedding(n_affiliate_id, emb_dim)
         self.month_checkin_embedding = nn.Embedding(n_month_checkin, emb_dim)
+        self.year_checkin_embedding = nn.Embedding(n_year_checkin, emb_dim)
         self.hotel_country_embedding = nn.Embedding(n_hotel_country, emb_dim)
 
         self.cate_proj = nn.Sequential(
-            nn.Linear(emb_dim * 6, hidden_size // 4),
+            nn.Linear(emb_dim * 7, hidden_size // 4),
             nn.LayerNorm(hidden_size // 4),
         )
         self.cont_emb = nn.Sequential(
@@ -41,7 +43,7 @@ class BookingLSTM(nn.Module):
         )
 
         self.num_past_city_to_emb = nn.Sequential(
-            nn.Linear(1000, hidden_size // 4),
+            nn.Linear(500, hidden_size // 4),
             nn.LayerNorm(hidden_size // 4),
         )
 
@@ -86,12 +88,14 @@ class BookingLSTM(nn.Module):
         num_stay_consecutively_tensor,
         city_embedding_tensor,
         num_past_city_to_embedding_tensor,
+        year_checkin_tensor,
     ):
         city_id_embedding = self.city_id_embedding(city_id_tensor)
         booker_country_embedding = self.booker_country_embedding(booker_country_tensor)
         device_class_embedding = self.device_class_embedding(device_class_tensor)
         affiliate_id_embedding = self.affiliate_id_embedding(affiliate_id_tensor)
         month_checkin_embedding = self.month_checkin_embedding(month_checkin_tensor)
+        year_checkin_embedding = self.year_checkin_embedding(year_checkin_tensor)
         hotel_country_embedding = self.hotel_country_embedding(hotel_country_tensor)
         num_checkin_feature = num_checkin_tensor.unsqueeze(2)
         days_stay_feature = days_stay_tensor.unsqueeze(2)
@@ -108,6 +112,7 @@ class BookingLSTM(nn.Module):
                 device_class_embedding,
                 affiliate_id_embedding,
                 month_checkin_embedding,
+                year_checkin_embedding,
                 hotel_country_embedding,
             ],
             dim=2,
