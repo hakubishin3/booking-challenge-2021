@@ -152,8 +152,8 @@ def run(config: dict, holdout: bool, debug: bool) -> None:
                 if c_i == 0:
                     continue
                 past_city_to_cols.append("num_past_city_to_{}".format(c_i))
-                transition["num_past_city_to_{}".format(c_i)] = transition["past_city_id"].apply(lambda x: np.log1p(num_past_to_current_city.at[(x, c_i), "num_transition"]) if x != 0 and (x, c_i) in transition_idx else 0)
-                if len(past_city_to_cols) == 500:
+                transition["num_past_city_to_{}".format(c_i)] = transition["past_city_id"].apply(lambda x: np.log10(num_past_to_current_city.at[(x, c_i), "num_transition"]) if x != 0 and (x, c_i) in transition_idx else 0)
+                if len(past_city_to_cols) == 200:
                     break
             transition["num_past_city_to_embedding"] = transition[past_city_to_cols].apply(lambda x: list(x), axis=1)
             train_test_set = pd.merge(train_test_set, transition[["past_city_id", "num_past_city_to_embedding"]], on="past_city_id", how="left")

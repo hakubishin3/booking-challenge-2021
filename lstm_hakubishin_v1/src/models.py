@@ -43,7 +43,7 @@ class BookingLSTM(nn.Module):
         )
 
         self.num_past_city_to_emb = nn.Sequential(
-            nn.Linear(500, hidden_size // 4),
+            nn.Linear(200, hidden_size // 4),
             nn.LayerNorm(hidden_size // 4),
         )
 
